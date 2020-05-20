@@ -1,0 +1,34 @@
+﻿<Window x:Class="DecompEditor.Editors.TrainerClassEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DecompEditor.Editors" 
+        xmlns:main="clr-namespace:DecompEditor" 
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        mc:Ignorable="d"
+        DataContext="{Binding TrainerClassEditor, Source={StaticResource ViewModelLocator}}"
+        Title="TrainerClass Editor" Height="228" Width="305">
+    <Canvas>
+        <ComboBox Name="classList" SelectedItem="{Binding CurrentClass}" ItemsSource="{Binding EditorViewModel.TrainerClasses}"
+                  Width="120" Canvas.Left="86" Canvas.Top="21" ToolTip="The class being edited."
+                  DisplayMemberPath="Identifier"/>
+        <Button x:Name="addClassButton" IsEnabled="{Binding CanAddClass, Mode=OneWay}" 
+                Canvas.Left="211" Canvas.Top="21" Height="22" Width="25" Click="addClassButton_Click" ToolTip="Add a new trainer class.">
+            <Button.Background>
+                <ImageBrush ImageSource="/Editors/baseline_add_black_18dp.png"/>
+            </Button.Background>
+        </Button>
+        <GroupBox Header="Properties" Canvas.Left="10" Canvas.Top="65" Height="113" Width="272">
+            <Canvas>
+                <TextBlock Text="ID:" Canvas.Left="16" Canvas.Top="10"/>
+                <TextBlock Text="Name:" Canvas.Left="16" Canvas.Top="37"/>
+                <TextBlock Text="Money Factor:" Canvas.Left="16" Canvas.Top="64"/>
+                <TextBox Text="{Binding CurrentClass.Identifier, UpdateSourceTrigger=PropertyChanged}" TextWrapping="NoWrap" Width="190" Canvas.Left="60" Canvas.Top="9" ToolTip="The C identifier of the class."/>
+                <TextBox Name="className" Text="{Binding CurrentClass.Name, UpdateSourceTrigger=PropertyChanged}"
+                         TextWrapping="NoWrap" Width="190" Canvas.Left="60" Canvas.Top="37" ToolTip="The display name of the class."/>
+                <xctk:IntegerUpDown Value="{Binding CurrentClass.MoneyFactor}" Minimum="0" Maximum="100" Canvas.Left="102" Canvas.Top="62" Width="53" ToolTip="The money factor for when the player battles a trainer of this class."/>
+            </Canvas>
+        </GroupBox>
+    </Canvas>
+</Window>

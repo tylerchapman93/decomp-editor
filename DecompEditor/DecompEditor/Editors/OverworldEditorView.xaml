@@ -1,0 +1,74 @@
+﻿<UserControl x:Class="DecompEditor.Editors.OverworldEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:DecompEditor.Editors" xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             x:Name="MainEditor"
+             DataContext="{Binding OverworldEditor, Source={StaticResource ViewModelLocator}}">
+    <Grid Margin="0,0,0,17">
+        <DockPanel LastChildFill="True" Margin="0,0,0,-14" Grid.RowSpan="2">
+            <ListBox x:Name="objectList" Width="208" ItemsSource="{Binding Objects}" SelectionChanged="objectList_SelectionChanged" Height="493"
+                     DisplayMemberPath="Identifier"/>
+            <Canvas Height="474" IsEnabled="{Binding ObjectIsSelected, Mode=OneWay}">
+                <GroupBox Header="Sprite" Height="225" Width="390" DataContext="{Binding CurrentObject}">
+                    <Canvas>
+                        <Label Content="Index:" Height="26" Canvas.Left="146" Canvas.Top="10"/>
+                        <xctk:IntegerUpDown Minimum="0" Value="{Binding ViewModel.AnimTableIndex, ElementName=MainEditor}" Canvas.Left="194" Canvas.Top="13" Width="60" ToolTip="The index within the animation table."/>
+                        <Label Content="Sprite:" Height="26" Canvas.Left="146" Canvas.Top="36"/>
+                        <Image x:Name="overworldPic" Height="98" Width="121" Canvas.Left="20" Canvas.Top="11" AutomationProperties.HelpText="The index within the animation table." ToolTip="The image of the sprite at the current animation index."/>
+                        <ComboBox Name="spriteList" SelectedValue="{Binding ViewModel.CurrentFrame.Pic, ElementName=MainEditor}"
+                                  ItemsSource="{Binding ViewModel.SpritePics, ElementName=MainEditor}" 
+                                  DisplayMemberPath="Identifier" SelectionChanged="spriteList_SelectionChanged"
+                                  Width="147" Canvas.Left="194" Canvas.Top="40" ToolTip="The main sprite image to use for this object."/>
+                        <Button Name="EditSpriteButton" Content="" Canvas.Left="346" Canvas.Top="40" Width="22" Height="22" Click="EditSpriteButton_Click" ToolTip="Edit the sprite image table.">
+                            <Button.Background>
+                                <ImageBrush ImageSource="/Editors/baseline_edit_black_18dp.png"/>
+                            </Button.Background>
+                        </Button>
+                        <Label Content="Sprite Frame:" Height="26" Canvas.Left="146" Canvas.Top="64"/>
+                        <xctk:IntegerUpDown Name="spriteFrame" Value="{Binding ViewModel.CurrentFrame.Index, ElementName=MainEditor}" 
+                                            Minimum="0" Maximum="100" Canvas.Left="225" Canvas.Top="67" Width="60"
+                                            ValueChanged="spriteFrame_ValueChanged" ToolTip="The frame within the sprite image to use for the current animation index."/>
+                        <Label Content="Palette:" Height="26" Canvas.Left="10" Canvas.Top="117"/>
+                        <Label Content="Animations:" Height="26" Canvas.Left="10" Canvas.Top="143"/>
+                        <Label Content="Width:" Height="26" Canvas.Left="10" Canvas.Top="174"/>
+                        <xctk:IntegerUpDown ValueChanged="spriteFrame_ValueChanged" Name="spriteWidth" Value="{Binding Info.Width}" Minimum="8" Maximum="256" Canvas.Left="55" Canvas.Top="177" Width="60" Increment="8" ToolTip="The width of the object in pixels."/>
+                        <Label Content="Height:" Height="26" Canvas.Left="126" Canvas.Top="174"/>
+                        <xctk:IntegerUpDown ValueChanged="spriteFrame_ValueChanged" Value="{Binding Info.Height}" Minimum="8" Maximum="256" Canvas.Left="174" Canvas.Top="177" Width="60" Increment="8" ToolTip="The height of the object in pixels."/>
+                        <ComboBox x:Name="paletteList" SelectedValue="{Binding Info.Palette}" ItemsSource="{Binding ViewModel.SpritePalettes, ElementName=MainEditor}" 
+                                  DisplayMemberPath="Identifier" Width="169" Canvas.Left="85" Canvas.Top="119" ToolTip="The palette to use for the sprite image."/>
+                        <ComboBox x:Name="animList" ItemsSource="{Binding ViewModel.AnimTables, ElementName=MainEditor, Mode=OneWay}" 
+                                  SelectedValue="{Binding Info.Animations}" DisplayMemberPath="PrettyName" Width="169" Canvas.Left="85" Canvas.Top="145" ToolTip="The animation to use for this object."/>
+                        <CheckBox Content="Reflection Palette" IsChecked="{Binding Info.EnableReflectionPaletteLoad}" Canvas.Left="260" Canvas.Top="123" ToolTip="Whether the reflection palette is loaded or not."/>
+                        <CheckBox Content="In-Animate" IsChecked="{Binding Info.Inanimate}" Canvas.Left="260" Canvas.Top="148" ToolTip="If this sprite object is not animated."/>
+                        <Button x:Name="removeIndexButtom" Click="removeIndexButtom_Click" Canvas.Left="346" Canvas.Top="13" Width="22" Height="20" ToolTip="Remove the current index and all following indices.">
+                            <Button.Background>
+                                <ImageBrush ImageSource="/Editors/baseline_clear_black_18dp.png"/>
+                            </Button.Background>
+                        </Button>
+                        <Label Name="indexCount" Height="26" Canvas.Left="255" Canvas.Top="10"/>
+                    </Canvas>
+                </GroupBox>
+                <GroupBox Header="Properties" Height="214" Width="296" DataContext="{Binding CurrentObject}" Canvas.Top="230">
+                    <Canvas>
+                        <Label Content="Name:" Height="26" Canvas.Left="4" Canvas.Top="8"/>
+                        <Label Content="Shadow Size:" Height="26" Canvas.Left="4" Canvas.Top="34"/>
+                        <Label Content="Tracks:" Height="26" Canvas.Left="4" Canvas.Top="60"/>
+                        <TextBox Text="{Binding Identifier, UpdateSourceTrigger=PropertyChanged}" TextWrapping="NoWrap" Width="185" Canvas.Left="85" Canvas.Top="10" Height="21" ToolTip="The C identifier of this object."/>
+                        <ComboBox Text="{Binding Info.ShadowSize}" ItemsSource="{Binding ViewModel.ShadowSizes, ElementName=MainEditor}" 
+                                  Width="185" Canvas.Left="85" Canvas.Top="36" ToolTip="The size of the shadow produced by this object."/>
+                        <ComboBox Text="{Binding Info.Tracks}" ItemsSource="{Binding ViewModel.TrackTypes, ElementName=MainEditor}" 
+                                  Width="185" Canvas.Left="85" Canvas.Top="63" Background="#FFE5E5E5" ToolTip="The type of tracks this object leaves behind."/>
+                        <Label Content="Affine Anims:" Height="26" Canvas.Left="4" Canvas.Top="89"/>
+                        <TextBox Text="{Binding Info.AffineAnimations, UpdateSourceTrigger=PropertyChanged}" TextWrapping="NoWrap" Width="185" Canvas.Left="85" Canvas.Top="91" Height="21" ToolTip="The affine animation table for this object."/>
+                        <Label Content="Palette Slot:" Height="26" Canvas.Left="3" Canvas.Top="117"/>
+                        <xctk:IntegerUpDown Value="{Binding Info.PaletteSlot}" Maximum="16" Canvas.Left="85" Canvas.Top="120" Width="60" ToolTip="The slot of the palette within the game. (Unnecessary with dynamic overworld palettes!!)"/>
+                    </Canvas>
+                </GroupBox>
+            </Canvas>
+        </DockPanel>
+    </Grid>
+</UserControl>

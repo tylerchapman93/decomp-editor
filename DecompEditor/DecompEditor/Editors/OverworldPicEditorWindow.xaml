@@ -1,0 +1,32 @@
+﻿<Window x:Class="DecompEditor.Editors.OverworldPicEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DecompEditor.Editors" xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        mc:Ignorable="d"
+        DataContext="{Binding OverworldPicEditor, Source={StaticResource ViewModelLocator}}"
+        Title="Overworld PicTable Editor" Height="329" Width="346">
+    <Canvas>
+        <ComboBox Name="spritePicList" SelectedItem="{Binding CurrentPic}" ItemsSource="{Binding SpritePics}"
+                  Width="120" Canvas.Left="104" Canvas.Top="134" ToolTip="The sprite picture being edited."
+                  DisplayMemberPath="Identifier"/>
+        <Button x:Name="addPicButton" Canvas.Left="229" Canvas.Top="134" Height="22" Width="25" Click="addPicButton_Click" ToolTip="Add a new sprite picture.">
+            <Button.Background>
+                <ImageBrush ImageSource="/Editors/baseline_add_black_18dp.png"/>
+            </Button.Background>
+        </Button>
+        <GroupBox IsEnabled="{Binding PicIsSelected}" Header="Properties" Canvas.Left="28" Canvas.Top="161" Height="113" Width="272">
+            <Canvas DataContext="{Binding CurrentPic}">
+                <TextBlock Text="Name:" Canvas.Left="16" Canvas.Top="10"/>
+                <TextBlock Text="Path:" Canvas.Left="16" Canvas.Top="37"/>
+                <TextBox Text="{Binding Identifier, UpdateSourceTrigger=PropertyChanged}"
+                         TextWrapping="NoWrap" Width="190" Canvas.Left="60" Canvas.Top="9" ToolTip="The C identifier of the picture."/>
+                <TextBox Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                         TextWrapping="NoWrap" Width="190" Canvas.Left="60" Canvas.Top="37" ToolTip="The relative path within the project directory that the image lives."/>
+                <Button Name="uploadNewPicButton" Click="uploadNewPicButton_Click" Content="Upload New Image" Canvas.Left="72" Canvas.Top="64" Width="116" ToolTip="Upload a new image for this sprite. (Replaces the existing image)"/>
+            </Canvas>
+        </GroupBox>
+        <Image Source="{Binding CurrentPic.FullPath, Mode=OneWay}" Height="100" Width="269" Canvas.Left="31" Canvas.Top="14"/>
+    </Canvas>
+</Window>

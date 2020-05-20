@@ -1,0 +1,44 @@
+﻿<Window x:Name="window" x:Class="DecompEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DecompEditor" xmlns:editors="clr-namespace:DecompEditor.Editors"
+        mc:Ignorable="d"
+        Title="Decomp Editor" Height="599" Width="826" Closing="window_Closing"
+        DataContext="{Binding Main, Source={StaticResource ViewModelLocator}}">
+    <Window.InputBindings>
+        <KeyBinding Command="{Binding Path=OpenCommand}" Gesture="CTRL+O" />
+        <KeyBinding Command="{Binding Path=ReloadCommand}" Gesture="CTRL+R" />
+        <KeyBinding Command="{Binding Path=SaveCommand}" Gesture="CTRL+S" />
+    </Window.InputBindings>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="682*"/>
+            <ColumnDefinition Width="47*"/>
+            <ColumnDefinition Width="15*"/>
+            <ColumnDefinition Width="82*"/>
+        </Grid.ColumnDefinitions>
+        <Menu HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="792" Grid.ColumnSpan="4">
+            <MenuItem Header="File" Height="27" Width="44">
+                <MenuItem Header="Open" InputGestureText="Ctrl+O" Command="{Binding Path=OpenCommand}"/>
+                <MenuItem Header="Save" InputGestureText="Ctrl+S" Command="{Binding Path=SaveCommand}"/>
+                <MenuItem Header="Reload" InputGestureText="Ctrl+R" Command="{Binding Path=ReloadCommand}"/>
+                <Separator/>
+                <MenuItem Header="Exit" InputGestureText="Alt+F4"/>
+            </MenuItem>
+        </Menu>
+        <TabControl Margin="0,27,0,0" Grid.ColumnSpan="4">
+            <TabItem Header="Overworld Editor">
+                <Grid Name="overworldEditorTab" Background="#FFE5E5E5">
+                    <editors:OverworldEditorView/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Trainer Editor">
+                <Grid Name="trainerEditorTab" Background="#FFE5E5E5">
+                    <editors:TrainerEditorView/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
