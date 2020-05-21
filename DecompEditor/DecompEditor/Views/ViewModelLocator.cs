@@ -11,6 +11,7 @@ namespace DecompEditor.Views {
       SimpleIoc.Default.Register<OverworldPicEditorViewModel>();
       SimpleIoc.Default.Register<TrainerClassEditorViewModel>();
       SimpleIoc.Default.Register<TrainerEditorViewModel>();
+      SimpleIoc.Default.Register<TrainerPicEditorViewModel>();
     }
 
     public static MainViewModel Main => SimpleIoc.Default.GetInstance<MainViewModel>();
@@ -18,5 +19,6 @@ namespace DecompEditor.Views {
     public static OverworldPicEditorViewModel OverworldPicEditor => SimpleIoc.Default.GetInstance<OverworldPicEditorViewModel>();
     public static TrainerClassEditorViewModel TrainerClassEditor => SimpleIoc.Default.GetInstance<TrainerClassEditorViewModel>();
     public static TrainerEditorViewModel TrainerEditor => SimpleIoc.Default.GetInstance<TrainerEditorViewModel>();
+    public static TrainerPicEditorViewModel TrainerPicEditor => SimpleIoc.Default.GetInstance<TrainerPicEditorViewModel>();
   }
 }

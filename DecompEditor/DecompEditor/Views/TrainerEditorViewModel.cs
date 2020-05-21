@@ -52,7 +52,7 @@ namespace DecompEditor.Views {
     /// <summary>
     /// The set of trainer encounter music within the project.
     /// </summary>
-    public IEnumerable<TrainerPic> TrainerPics => Project.Instance.TrainerPics.TrainerPics;
+    public IEnumerable<TrainerPic> TrainerPics => Project.Instance.TrainerPics.FrontPics;
 
     /// <summary>
     /// The currently selected trainer.

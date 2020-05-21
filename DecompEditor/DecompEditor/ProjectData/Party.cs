@@ -17,10 +17,7 @@ namespace DecompEditor {
     public Item HeldItem { get => heldItem; set => Set(ref heldItem, value); }
     public ObservableCollection<Move> Moves {
       get => moves;
-      set {
-        moves = value;
-        moves.trackItemPropertyUpdates(this);
-      }
+      set => SetAndTrack(ref moves, value);
     }
 
     public static Pokemon createDefault() {
@@ -36,10 +33,7 @@ namespace DecompEditor {
 
     public ObservableCollection<Pokemon> Pokemon {
       get => pokemon;
-      set {
-        pokemon = value;
-        pokemon.trackItemPropertyUpdates(this);
-      }
+      set => SetAndTrackItemUpdates(ref pokemon, value, this);
     }
     public string CppVariable { get; set; }
 

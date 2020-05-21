@@ -34,25 +34,16 @@ namespace DecompEditor {
     public string Name { get => name; set => Set(ref name, value); }
     public ObservableCollection<Item> Items {
       get => items;
-      set {
-        items = value;
-        items.trackItemPropertyUpdates(this);
-      }
+      set => SetAndTrack(ref items, value);
     }
     public bool DoubleBattle { get => doubleBattle; set => Set(ref doubleBattle, value); }
-    public bool IsMale {
-      get => isMale;
-      set => Set(ref isMale, value); 
-    }
+    public bool IsMale { get => isMale; set => Set(ref isMale, value); }
     public bool IsFemale { get => !IsMale; set => IsMale = !value; }
     public ObservableCollection<string> AiFlags {
       get => aiFlags;
-      set {
-        Set(ref aiFlags, value);
-        aiFlags.trackItemPropertyUpdates(this);
-      }
+      set => SetAndTrack(ref aiFlags, value);
     }
-    public TrainerParty Party { get => party; set => Set(ref party, value); }
+    public TrainerParty Party { get => party; set => SetAndTrack(ref party, value); }
 
     public Trainer() {
       AiFlags = new ObservableCollection<string>();
@@ -61,14 +52,16 @@ namespace DecompEditor {
   }
 
   class TrainerDatabase : ObservableObject {
-    public bool IsDirty { 
-      get;
-      private set;
+    private ObservableCollection<Trainer> trainers;
+
+    public bool IsDirty { get; private set; }
+    public ObservableCollection<Trainer> Trainers {
+      get => trainers;
+      private set => SetAndTrackItemUpdates(ref trainers, value, this);
     }
-    public ObservableCollection<Trainer> Trainers { get; } = new ObservableCollection<Trainer>();
 
     public TrainerDatabase() {
-      Trainers.trackItemPropertyUpdates(this, "Trainers");
+      Trainers = new ObservableCollection<Trainer>();
       PropertyChanged += (sender, e) => IsDirty = true;
     }
 

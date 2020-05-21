@@ -26,16 +26,19 @@ namespace DecompEditor {
 
   public class TrainerClassDatabase : ObservableObject {
     readonly Dictionary<string, TrainerClass> idToTrainerClass = new Dictionary<string, TrainerClass>();
+    private ObservableCollection<TrainerClass> classes;
 
     // TODO: These could be configurable.
     public int MaxClassCount => 255;
     public int MaxClassNameLen => 13;
     public bool IsDirty { get; private set; }
 
-    public ObservableCollection<TrainerClass> Classes { get; } = new ObservableCollection<TrainerClass>();
-
+    public ObservableCollection<TrainerClass> Classes {
+      get => classes;
+      private set => SetAndTrackItemUpdates(ref classes, value, this);
+    }
     public TrainerClassDatabase() {
-      Classes.trackItemPropertyUpdates(this, "Classes");
+      Classes = new ObservableCollection<TrainerClass>();
       PropertyChanged += (sender, e) => IsDirty = true;
     }
 
@@ -45,7 +48,8 @@ namespace DecompEditor {
       IsDirty = false;
     }
 
-    public TrainerClass getClassFromId(string id) => idToTrainerClass[id];
+    /// Only used during serialization.
+    internal TrainerClass getClassFromId(string id) => idToTrainerClass[id];
     public void addClass(TrainerClass newClass) {
       idToTrainerClass.Add(newClass.Identifier, newClass);
       Classes.Add(newClass);
@@ -113,7 +117,7 @@ namespace DecompEditor {
         string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "include", "constants", "trainers.h"));
         var writer = new StreamWriter(Path.Combine(projectDir, "include", "constants", "trainers.h"), false);
 
-        // Copy the existing lines trainer class IDs.
+        // Copy the existing non trainer class ID lines.
         int curLine = 0;
         while (!curLines[curLine].StartsWith("#define TRAINER_CLASS_"))
           writer.WriteLine(curLines[curLine++]);
@@ -126,7 +130,7 @@ namespace DecompEditor {
 
         int classCount = 0;
         foreach (TrainerClass tClass in database.Classes) {
-          writer.WriteLine(string.Format("#define TRAINER_CLASS_{0}".PadRight(longestClassID) + " 0x{1:X}",
+          writer.WriteLine(string.Format("#define TRAINER_CLASS_" + "{0}".PadRight(longestClassID) + " 0x{1:X}",
                                          tClass.Identifier, classCount++));
         }
 

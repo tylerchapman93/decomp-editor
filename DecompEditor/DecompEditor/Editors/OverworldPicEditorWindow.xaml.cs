@@ -1,5 +1,6 @@
-﻿using DecompEditor.Views;
-using Microsoft.Win32;
+﻿using DecompEditor.Utils;
+using DecompEditor.Views;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 
@@ -18,27 +19,17 @@ namespace DecompEditor.Editors {
       spritePicList.Items.IsLiveSorting = true;
     }
 
-    private bool uploadPicture(out string path) {
-      var openFileDialog = new OpenFileDialog {
-        InitialDirectory = System.IO.Path.Combine(
-        Project.Instance.ProjectDir, "graphics", "object_events", "pics"),
-        Filter = "Sprite Image (*.png)|*.png",
-        RestoreDirectory = true
-      };
-      bool result = openFileDialog.ShowDialog() == true;
-      path = result ? openFileDialog.FileName : string.Empty;
-      return result;
-    }
+    private string EventPicDir => System.IO.Path.Combine(Project.Instance.ProjectDir, "graphics", "object_events", "pics");
 
     private void uploadNewPicButton_Click(object sender, RoutedEventArgs e) {
-      if (uploadPicture(out string newPath))
+      if (FileUtils.uploadImage(out string newPath, EventPicDir))
         ViewModel.CurrentPic.FullPath = newPath;
     }
 
     private void addPicButton_Click(object sender, RoutedEventArgs e) {
-      if (!uploadPicture(out string path))
+      if (!FileUtils.uploadImage(out string path, EventPicDir))
         return;
-      System.Collections.ObjectModel.ObservableCollection<EventObjectPic> pics = Project.Instance.EventObjects.Pics;
+      ObservableCollection<EventObjectPic> pics = Project.Instance.EventObjects.Pics;
       string identifier = "__new_pic_" + pics.Count;
       var newPic = new EventObjectPic() {
         Identifier = identifier,

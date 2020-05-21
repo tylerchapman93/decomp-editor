@@ -24,7 +24,7 @@ namespace DecompEditor {
     private string affineAnimations;
 
     public string CppVariable { get => cppVariable; set => Set(ref cppVariable, value); }
-    public EventObjectPalette Palette { get => palette; set => Set(ref palette, value); }
+    public EventObjectPalette Palette { get => palette; set => SetAndTrack(ref palette, value); }
     public string ReflectionPalette { get => reflectionPalette; set => Set(ref reflectionPalette, value); }
     public int Width { get => width; set => Set(ref width, value); }
     public int Height { get => height; set => Set(ref height, value); }
@@ -33,8 +33,8 @@ namespace DecompEditor {
     public bool Inanimate { get => inanimate; set => Set(ref inanimate, value); }
     public bool EnableReflectionPaletteLoad { get => enableReflectionPaletteLoad; set => Set(ref enableReflectionPaletteLoad, value); }
     public string Tracks { get => tracks; set => Set(ref tracks, value); }
-    public EventObjectAnimTable Animations { get => animations; set => Set(ref animations, value); }
-    public EventObjectPicTable PicTable { get => picTable; set => Set(ref picTable, value); }
+    public EventObjectAnimTable Animations { get => animations; set => SetAndTrack(ref animations, value); }
+    public EventObjectPicTable PicTable { get => picTable; set => SetAndTrack(ref picTable, value); }
     public string AffineAnimations { get => affineAnimations; set => Set(ref affineAnimations, value); }
   }
   public class EventObject : ObservableObject {
@@ -58,7 +58,7 @@ namespace DecompEditor {
       }
     }
 
-    public GraphicsInfo Info { get => info; set => Set(ref info, value); }
+    public GraphicsInfo Info { get => info; set => SetAndTrack(ref info, value); }
   }
   public class EventObjectAnimTable {
     public string Identifier { get; set; }
@@ -106,7 +106,7 @@ namespace DecompEditor {
       private EventObjectPic pic;
       private int index = 0;
 
-      public EventObjectPic Pic { get => pic; set => Set(ref pic, value); }
+      public EventObjectPic Pic { get => pic; set => SetAndTrack(ref pic, value); }
       public int Index { get => index; set => Set(ref index, value); }
     }
 
@@ -115,10 +115,7 @@ namespace DecompEditor {
 
     public string CppVar { get => cppVar; set => Set(ref cppVar, value); }
     public ObservableCollection<Frame> Frames {
-      get => frames; set {
-        Set(ref frames, value);
-        frames.trackItemPropertyUpdates(this);
-      }
+      get => frames; set => SetAndTrackItemUpdates(ref frames, value, this);
     }
 
     public EventObjectPicTable() => Frames = new ObservableCollection<Frame>();
@@ -131,25 +128,13 @@ namespace DecompEditor {
     private ObservableCollection<EventObject> objects;
 
     public bool IsDirty { get; private set; }
-    public ObservableCollection<EventObject> Objects {
-      get => objects;
-      set {
-        Set(ref objects, value);
-        objects.trackItemPropertyUpdates(this);
-      }
-    }
+    public ObservableCollection<EventObject> Objects { get => objects; set => SetAndTrackItemUpdates(ref objects, value, this); }
 
     public IEnumerable<EventObjectAnimTable> AnimTables => animTables;
 
     public List<EventObjectPalette> Palettes => varToPalette.Values.Concat(Enumerable.Repeat(EventObjectPalette.GenerateFromFileInst, 1)).ToList();
 
-    public ObservableCollection<EventObjectPic> Pics {
-      get => pics;
-      set {
-        Set(ref pics, value);
-        pics.trackItemPropertyUpdates(this);
-      }
-    }
+    public ObservableCollection<EventObjectPic> Pics { get => pics; set => SetAndTrackItemUpdates(ref pics, value, this); }
     public List<string> ShadowSizes { get; set; } = new List<string>();
     public List<string> TrackTypes { get; set; } = new List<string>();
 

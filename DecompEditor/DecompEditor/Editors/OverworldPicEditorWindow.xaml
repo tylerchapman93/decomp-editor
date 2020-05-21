@@ -3,10 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:DecompEditor.Editors" xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        xmlns:local="clr-namespace:DecompEditor.Editors" xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit" xmlns:utils="clr-namespace:DecompEditor.Utils"
         mc:Ignorable="d"
         DataContext="{Binding OverworldPicEditor, Source={StaticResource ViewModelLocator}}"
         Title="Overworld PicTable Editor" Height="329" Width="346">
+    <Window.Resources>
+        <utils:ImageConverter x:Key="ImageConverter"/>
+    </Window.Resources>
     <Canvas>
         <ComboBox Name="spritePicList" SelectedItem="{Binding CurrentPic}" ItemsSource="{Binding SpritePics}"
                   Width="120" Canvas.Left="104" Canvas.Top="134" ToolTip="The sprite picture being edited."
@@ -27,6 +30,6 @@
                 <Button Name="uploadNewPicButton" Click="uploadNewPicButton_Click" Content="Upload New Image" Canvas.Left="72" Canvas.Top="64" Width="116" ToolTip="Upload a new image for this sprite. (Replaces the existing image)"/>
             </Canvas>
         </GroupBox>
-        <Image Source="{Binding CurrentPic.FullPath, Mode=OneWay}" Height="100" Width="269" Canvas.Left="31" Canvas.Top="14"/>
+        <Image Source="{Binding CurrentPic.FullPath, Mode=OneWay, Converter={StaticResource ImageConverter}}" Height="100" Width="269" Canvas.Left="31" Canvas.Top="14"/>
     </Canvas>
 </Window>

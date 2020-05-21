@@ -104,7 +104,7 @@ namespace DecompEditor.Editors {
       currentObject.Info.Height = Math.Min(currentObject.Info.Height, fileBitmap.PixelHeight);
 
       // Set max for framecount.
-      spriteFrame.Maximum = (fileBitmap.PixelWidth / 8) / (spriteWidth.Value / 8);
+      spriteFrame.Maximum = ((fileBitmap.PixelWidth / 8) / (spriteWidth.Value / 8)) - 1;
       currentFrame.Index = Math.Min(currentFrame.Index, (int)spriteFrame.Maximum);
 
       // Check to see if the width/height of the object is the same as the image.

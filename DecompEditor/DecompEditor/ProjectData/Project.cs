@@ -19,7 +19,7 @@ namespace DecompEditor {
     internal TrainerPicDatabase TrainerPics { get; } = new TrainerPicDatabase();
     internal string ProjectDir { get => projectDir; private set => projectDir = FileUtils.normalizePath(value); }
 
-    internal bool IsDirty => EventObjects.IsDirty || Trainers.IsDirty || TrainerClasses.IsDirty;
+    internal bool IsDirty => EventObjects.IsDirty || Trainers.IsDirty || TrainerClasses.IsDirty || TrainerPics.IsDirty;
 
     public static Project Instance { get; private set; } = new Project();
 
@@ -77,6 +77,7 @@ namespace DecompEditor {
       // Trainer editor saving.
       Trainers.save(ProjectDir, BattleAI);
       TrainerClasses.save(ProjectDir);
+      TrainerPics.save(ProjectDir);
 
       // Overworld editor saving.
       EventObjects.save(ProjectDir);

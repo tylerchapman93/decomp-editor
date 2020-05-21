@@ -8,7 +8,8 @@ namespace DecompEditor.Utils {
     /// Convert the given string to a pascal sentence from snake case.
     public static string fromSnakeToPascalSentence(this string str) {
       TextInfo info = CultureInfo.CurrentCulture.TextInfo;
-      return info.ToTitleCase(str.ToLower().Replace("_", " "));
+      string result = info.ToTitleCase(str.ToLower().Replace("_", " "));
+      return result.Replace("Cooltrainer", "Cool Trainer").Replace("Rs ", "Ruby Sapphire");
     }
     public static string fromSnakeToPascal(this string str) => str.fromSnakeToPascalSentence().fromSentenceToPascal();
 
@@ -25,7 +26,7 @@ namespace DecompEditor.Utils {
     public static string fromPascalToSentence(this string str) => string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? " " + x.ToString() : x.ToString()));
     public static string fromPascalToSnake(this string str) {
       string result = string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToUpper();
-      return result.Replace("COOL_TRAINER", "COOLTRAINER");
+      return result.Replace("COOL_TRAINER", "COOLTRAINER").Replace("RUBY_SAPPHIRE", "RS");
     }
     public static string fromSentenceToPascal(this string str) => str.Replace(" ", string.Empty);
 

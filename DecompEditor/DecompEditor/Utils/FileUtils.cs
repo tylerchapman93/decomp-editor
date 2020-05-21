@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -36,11 +37,20 @@ namespace DecompEditor.Utils {
           File.WriteAllLines(file, lines);
       });
     }
+    public static string normalizePath(string path) {
+      if (path == string.Empty)
+        return path;
+      return Path.GetFullPath(new Uri(path).LocalPath)
+                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                 .ToUpperInvariant();
+    }
+
     public static BitmapImage loadBitmapImage(string path) {
       var bitmap = new BitmapImage();
       bitmap.BeginInit();
       bitmap.UriSource = new Uri(path);
       bitmap.CacheOption = BitmapCacheOption.OnLoad;
+      bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
       bitmap.EndInit();
       return bitmap;
     }
@@ -55,12 +65,16 @@ namespace DecompEditor.Utils {
       // TODO: We really shouldn't have to load the image here.
       return loadBitmapImage(path).PixelWidth;
     }
-    public static string normalizePath(string path) {
-      if (path == string.Empty)
-        return path;
-      return Path.GetFullPath(new Uri(path).LocalPath)
-                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                 .ToUpperInvariant();
+    public static bool uploadImage(out string path, string initialDir) {
+      var openFileDialog = new OpenFileDialog {
+        InitialDirectory = initialDir,
+        Filter = "Sprite Image (*.png)|*.png",
+        RestoreDirectory = true
+      };
+      bool result = openFileDialog.ShowDialog() == true;
+      path = result ? openFileDialog.FileName : string.Empty;
+      return result;
     }
+
   }
 }

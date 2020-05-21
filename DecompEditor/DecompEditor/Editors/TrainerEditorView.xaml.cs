@@ -21,19 +21,21 @@ namespace DecompEditor.Editors {
       classList.Items.IsLiveSorting = true;
       musicList.Items.SortDescriptions.Add(defaultSortDesc);
       picList.Items.SortDescriptions.Add(identifierSortDesc);
+      picList.Items.IsLiveSorting = true;
       trainerList.Items.SortDescriptions.Add(identifierSortDesc);
       trainerList.Items.IsLiveSorting = true;
     }
 
     public TrainerEditorViewModel ViewModel => DataContext as TrainerEditorViewModel;
 
-    private void trainerList_SelectionChanged(object sender, SelectionChangedEventArgs evt) {
-      ViewModel.CurrentTrainer = trainerList.SelectedItem as Trainer;
-    }
+    private void trainerList_SelectionChanged(object sender, SelectionChangedEventArgs evt) => ViewModel.CurrentTrainer = trainerList.SelectedItem as Trainer;
 
     private void partyMenu_SelectionChanged(object sender, SelectionChangedEventArgs e) => ViewModel.CurrentPokemon = partyMenu.SelectedItem as Pokemon;
 
     private void trainerItem_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+      if (ViewModel.CurrentTrainer == null)
+        return;
+
       var itemCombo = sender as ComboBox;
       ListBoxItem parentControl = itemCombo.FindVisualParent<ListBoxItem>();
       ListBox parentList = parentControl.FindVisualParent<ListBox>();
@@ -41,13 +43,16 @@ namespace DecompEditor.Editors {
       ViewModel.CurrentTrainer.Items[itemIndex] = itemCombo.SelectedItem as Item;
     }
     private void partyMove_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+      if (ViewModel.CurrentPokemon == null)
+        return;
+
       var moveCombo = sender as ComboBox;
       ListBoxItem parentControl = moveCombo.FindVisualParent<ListBoxItem>();
       ListBox parentList = parentControl.FindVisualParent<ListBox>();
       int moveIndex = parentList.ItemContainerGenerator.IndexFromContainer(parentControl);
       ViewModel.CurrentPokemon.Moves[moveIndex] = moveCombo.SelectedItem as Move;
     }
-    private void EditClassButton_Click(object sender, RoutedEventArgs e) {
+    private void editClassButton_Click(object sender, RoutedEventArgs e) {
       var window = new TrainerClassEditorWindow(classList.SelectedItem as TrainerClass) {
         Owner = Application.Current.MainWindow,
         WindowStartupLocation = WindowStartupLocation.CenterOwner
@@ -111,9 +116,7 @@ namespace DecompEditor.Editors {
 
     private void partyMenu_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
       DataGridRow clickedRow = ((DependencyObject)e.OriginalSource).FindVisualParent<DataGridRow>();
-      if (clickedRow == null)
-        return;
-      if (!clickedRow.IsNewItem)
+      if (clickedRow == null || !clickedRow.IsNewItem)
         return;
       ViewModel.CurrentTrainer.Party.Pokemon.Add(Pokemon.createDefault());
       ViewModel.RaisePropertyChanged("CanAddPokemon");
@@ -132,13 +135,12 @@ namespace DecompEditor.Editors {
       partyMenu.SelectedIndex = Math.Max(0, removeIndex - 1);
     }
 
-    private void picList_SelectionChanged(object sender, SelectionChangedEventArgs e) {
-      if (ViewModel.CurrentTrainer?.Pic.FileName != null) {
-        trainerPic.Source = FileUtils.loadBitmapImage(System.IO.Path.Combine(Project.Instance.ProjectDir,
-                                                      ViewModel.CurrentTrainer.Pic.FileName));
-      } else {
-        trainerPic.Source = null;
-      }
+    private void editPicButton_Click(object sender, RoutedEventArgs e) {
+      var window = new TrainerPicEditorWindow(picList.SelectedItem as TrainerPic) {
+        Owner = Application.Current.MainWindow,
+        WindowStartupLocation = WindowStartupLocation.CenterOwner
+      };
+      window.ShowDialog();
     }
   }
 }

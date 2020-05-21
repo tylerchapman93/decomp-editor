@@ -4,11 +4,14 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:DecompEditor.Editors"
-             xmlns:sdl="http://schemas.sdl.com/xaml" xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             xmlns:sdl="http://schemas.sdl.com/xaml" xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit" xmlns:utils="clr-namespace:DecompEditor.Utils"
              mc:Ignorable="d" d:DesignWidth="800"
              Name="MainEditor"
              DataContext="{Binding TrainerEditor, Source={StaticResource ViewModelLocator}}" 
              Height="506">
+    <UserControl.Resources>
+        <utils:ImageConverter x:Key="ImageConverter"/>
+    </UserControl.Resources>
     <Grid Margin="0,0,0,17">
         <Grid.RowDefinitions>
             <RowDefinition Height="487*"/>
@@ -27,14 +30,14 @@
                         <Label Content="Class:" Height="26" Canvas.Left="146" Canvas.Top="60"/>
                         <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" TextWrapping="NoWrap" Width="120" Canvas.Left="50" Canvas.Top="10" ToolTip="The display name of this trainer."/>
                         <TextBox Text="{Binding Identifier, UpdateSourceTrigger=PropertyChanged}" TextWrapping="NoWrap" Width="120" Canvas.Left="50" Canvas.Top="35" ToolTip="The C identifier of this trainer."/>
-                        <Image x:Name="trainerPic" Height="98" Width="121" Canvas.Left="6" Canvas.Top="62"/>
+                        <Image x:Name="trainerPic" Source="{Binding Pic.FullPath, Mode=OneWay, Converter={StaticResource ImageConverter}}" Height="98" Width="121" Canvas.Left="6" Canvas.Top="62"/>
                         <ComboBox Name="picList" SelectedValue="{Binding Pic}" ItemsSource="{Binding ViewModel.TrainerPics, ElementName=MainEditor}"
                                   Width="120" Canvas.Left="6" Canvas.Top="170" ToolTip="The front picture used for this trainer."
-                                  DisplayMemberPath="Identifier" SelectionChanged="picList_SelectionChanged"/>
+                                  DisplayMemberPath="Identifier"/>
                         <ComboBox Name="classList" SelectedValue="{Binding Class}" ItemsSource="{Binding ViewModel.TrainerClasses, ElementName=MainEditor}" 
                                   Width="127" Canvas.Left="195" Canvas.Top="62" ToolTip="The class of this trainer. (Used for display name and money calculation)"
                                   DisplayMemberPath="Identifier"/>
-                        <Button Name="EditClassButton" Content="" Canvas.Left="327" Canvas.Top="62" Width="22" Height="22" Click="EditClassButton_Click" ToolTip="Edit the trainer class list.">
+                        <Button Name="editClassButton" Content="" Canvas.Left="327" Canvas.Top="62" Width="22" Height="22" Click="editClassButton_Click" ToolTip="Edit the trainer class list.">
                             <Button.Background>
                                 <ImageBrush ImageSource="/Editors/baseline_edit_black_18dp.png"/>
                             </Button.Background>
@@ -48,6 +51,11 @@
                         <RadioButton IsChecked="{Binding IsMale}" Content="Male" Canvas.Left="166" Canvas.Top="151" Foreground="#FF323C9E" GroupName="Gender" ToolTip="If this trainer is Male."/>
                         <RadioButton IsChecked="{Binding IsFemale, Mode=OneWay}" Content="Female" Canvas.Left="223" Canvas.Top="151" Foreground="#FFC930C9" GroupName="Gender" ToolTip="If this trainer is Female"/>
                         <CheckBox IsChecked="{Binding DoubleBattle}" Content="Double Battle" Canvas.Left="166" Canvas.Top="171" ToolTip="If this trainer represents a double battle."/>
+                        <Button x:Name="editPicButton" Content="" Canvas.Left="131" Canvas.Top="170" Width="22" Height="22" Click="editPicButton_Click"  ToolTip="Edit the trainer picture list.">
+                            <Button.Background>
+                                <ImageBrush ImageSource="/Editors/baseline_edit_black_18dp.png"/>
+                            </Button.Background>
+                        </Button>
                     </Canvas>
                 </GroupBox>
                 <GroupBox Header="Items" DataContext="{Binding CurrentTrainer}" Height="226" Canvas.Left="370" Width="212">
