@@ -661,23 +661,40 @@ namespace DecompEditor {
           else
             palId = info.Palette.Identifier;
 
-          stream.WriteLine("const struct ObjectEventGraphicsInfo " + info.CppVariable + " = {");
-          stream.WriteLine("    .tileTag = 0xFFFF,");
-          stream.WriteLine("    .paletteTag1 = OBJ_EVENT_PAL_TAG_" + palId + ",");
-          stream.WriteLine("    .paletteTag2 = " + info.ReflectionPalette + ",");
-          stream.WriteLine("    .size = " + ((info.Width * info.Height * 4) / 8) + ",");
-          stream.WriteLine("    .width = " + info.Width + ",");
-          stream.WriteLine("    .height = " + info.Height + ",");
-          stream.WriteLine("    .paletteSlot = " + info.PaletteSlot + ",");
-          stream.WriteLine("    .shadowSize = SHADOW_SIZE_" + info.ShadowSize + ",");
-          stream.WriteLine("    .inanimate = " + (info.Inanimate ? "TRUE" : "FALSE") + ",");
-          stream.WriteLine("    .disableReflectionPaletteLoad = " + (info.EnableReflectionPaletteLoad ? "FALSE" : "TRUE") + ",");
-          stream.WriteLine("    .tracks = TRACKS_" + info.Tracks + ",");
-          stream.WriteLine("    .oam = &gObjectEventBaseOam_" + roundOamSize(info.Width) + "x" + roundOamSize(info.Height) + ",");
-          stream.WriteLine("    .subspriteTables = gObjectEventSpriteOamTables_" + info.Width + "x" + info.Height + ",");
-          stream.WriteLine("    .anims = " + info.Animations.Identifier + ",");
-          stream.WriteLine("    .images = " + info.PicTable.CppVar + ",");
-          stream.WriteLine("    .affineAnims = " + info.AffineAnimations + ",");
+          // TODO: It would be nice to print the struct form, but PoryMap can't load that in...
+          stream.Write("const struct ObjectEventGraphicsInfo " + info.CppVariable + " = {");
+          // .tileTag
+          stream.Write("0xFFFF, ");
+          // .paletteTag1
+          stream.Write("OBJ_EVENT_PAL_TAG_" + palId + ", ");
+          // .paletteTag2
+          stream.Write(info.ReflectionPalette + ", ");
+          // .size
+          stream.Write(((info.Width * info.Height * 4) / 8) + ", ");
+          // .width
+          stream.Write(info.Width + ", ");
+          // .height
+          stream.Write(info.Height + ", ");
+          // .paletteSlot
+          stream.Write(info.PaletteSlot + ", ");
+          // .shadowSize
+          stream.Write("SHADOW_SIZE_" + info.ShadowSize + ", ");
+          // .inanimate
+          stream.Write((info.Inanimate ? "TRUE" : "FALSE") + ", ");
+          // .disableReflectionPaletteLoad
+          stream.Write((info.EnableReflectionPaletteLoad ? "FALSE" : "TRUE") + ", ");
+          // .tracks
+          stream.Write("TRACKS_" + info.Tracks + ", ");
+          // .oam
+          stream.Write("&gObjectEventBaseOam_" + roundOamSize(info.Width) + "x" + roundOamSize(info.Height) + ", ");
+          // .subspriteTables
+          stream.Write("gObjectEventSpriteOamTables_" + info.Width + "x" + info.Height + ", ");
+          // .anims
+          stream.Write(info.Animations.Identifier + ", ");
+          // .images
+          stream.Write(info.PicTable.CppVar + ", ");
+          // .affineAnims
+          stream.Write(info.AffineAnimations);
           stream.WriteLine("};\n");
         }
         stream.Close();
