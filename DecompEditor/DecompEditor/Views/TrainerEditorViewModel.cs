@@ -1,6 +1,7 @@
-﻿using GalaSoft.MvvmLight;
+﻿using DecompEditor.ParserUtils;
+using DecompEditor.Utils;
+using GalaSoft.MvvmLight;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace DecompEditor.Views {
@@ -16,8 +17,7 @@ namespace DecompEditor.Views {
     /// <summary>
     /// The set of trainer encounter music within the project.
     /// </summary>
-    public IEnumerable<string> EncounterMusic => Project.Instance.TrainerEncounterMusic.EncounterMusic
-      .Select(x => x);
+    public IEnumerable<CDefine> EncounterMusic => Project.Instance.TrainerEncounterMusic.EncounterMusic;
 
     /// <summary>
     /// The set of trainer encounter music within the project.
@@ -42,7 +42,7 @@ namespace DecompEditor.Views {
     /// <summary>
     /// The set of AI scripts that can be attached to a trainer.
     /// </summary>
-    public IEnumerable<string> TrainerAIScripts => Project.Instance.BattleAI.AIScripts;
+    public IEnumerable<CDefine> TrainerAIScripts => Project.Instance.BattleAI.AIScripts;
 
     /// <summary>
     /// The set of trainer classes within the project.

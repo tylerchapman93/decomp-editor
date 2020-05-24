@@ -1,5 +1,5 @@
-﻿using GalaSoft.MvvmLight;
-using System.Collections.ObjectModel;
+﻿using DecompEditor.Utils;
+using GalaSoft.MvvmLight;
 
 namespace DecompEditor.Views {
   public class TrainerPicEditorViewModel : ViewModelBase {

@@ -15,11 +15,10 @@ namespace DecompEditor.Editors {
       InitializeComponent();
 
       var identifierSortDesc = new SortDescription("Identifier", ListSortDirection.Ascending);
-      var defaultSortDesc = new SortDescription(null, ListSortDirection.Ascending);
-      aiScripts.Items.SortDescriptions.Add(defaultSortDesc);
+      aiScripts.Items.SortDescriptions.Add(identifierSortDesc);
       classList.Items.SortDescriptions.Add(identifierSortDesc);
       classList.Items.IsLiveSorting = true;
-      musicList.Items.SortDescriptions.Add(defaultSortDesc);
+      musicList.Items.SortDescriptions.Add(identifierSortDesc);
       picList.Items.SortDescriptions.Add(identifierSortDesc);
       picList.Items.IsLiveSorting = true;
       trainerList.Items.SortDescriptions.Add(identifierSortDesc);
@@ -126,7 +125,7 @@ namespace DecompEditor.Editors {
       DataGridRow clickedRow = ((DependencyObject)e.OriginalSource).FindVisualParent<DataGridRow>();
       if (e.Key == Key.Delete && (clickedRow == null || clickedRow.IsNewItem))
         return;
-      System.Collections.ObjectModel.ObservableCollection<Pokemon> pokemon = ViewModel.CurrentTrainer.Party.Pokemon;
+      ObservableCollection<Pokemon> pokemon = ViewModel.CurrentTrainer.Party.Pokemon;
       if (pokemon.Count == 1)
         return;
       int removeIndex = clickedRow.GetIndex();

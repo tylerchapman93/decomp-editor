@@ -1,6 +1,5 @@
-﻿using DecompEditor.Utils;
+﻿using DecompEditor.ParserUtils;
 using System.Collections.Generic;
-using System.IO;
 using Truncon.Collections;
 
 namespace DecompEditor {
@@ -8,28 +7,24 @@ namespace DecompEditor {
     public string Identifier { get; set; }
     public string Name { get; set; }
   }
-  public class PokemonSpeciesDatabase {
+  public class PokemonSpeciesDatabase : DatabaseBase {
     readonly OrderedDictionary<string, PokemonSpecies> enumToSpecies = new OrderedDictionary<string, PokemonSpecies>();
 
     public PokemonSpecies getFromId(string name) => enumToSpecies[name];
 
     public IEnumerable<PokemonSpecies> Species => enumToSpecies.Values;
 
-    public void reset() => enumToSpecies.Clear();
+    protected override void reset() => enumToSpecies.Clear();
 
-    public void load(string projectDir) {
-      reset();
-
-      StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "text", "species_names.h"));
-      reader.ReadLine();
-      while (!reader.EndOfStream) {
-        if (CParser.Element.tryDeserializeBracketString(reader.ReadLine(), out string speciesEnum, out string speciesName)) {
+    protected override void deserialize(ProjectDeserializer deserializer) {
+      deserializer.deserializeFile((stream) => {
+        if (StructBodyDeserializer.Element.tryDeserializeBracketString(stream.ReadLine(), out string speciesEnum, out string speciesName)) {
           enumToSpecies.Add(speciesEnum, new PokemonSpecies() {
             Identifier = speciesEnum,
             Name = speciesName
           });
         }
-      }
+      }, "src", "data", "text", "species_names.h");
     }
   }
 }

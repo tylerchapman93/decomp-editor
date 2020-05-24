@@ -30,6 +30,7 @@ namespace DecompEditor.Editors {
         palListView.CustomSort = Comparer<EventObjectPalette>.Create((lhs, rhs) => lhs.Identifier.CompareToNatural(rhs.Identifier));
         spriteList.Items.SortDescriptions.Add(identifierSortDesc);
         spriteList.Items.IsLiveSorting = true;
+        removeIndexButtom.IsEnabled = ViewModel.AnimTableIndex != 0;
         return;
       }
       if (e.PropertyName == "CurrentFrame") {
@@ -57,7 +58,7 @@ namespace DecompEditor.Editors {
 
     private void copyPreviousFrames() {
       int curIndex = ViewModel.AnimTableIndex;
-      System.Collections.ObjectModel.ObservableCollection<EventObjectPicTable.Frame> frames = ViewModel.CurrentObject.Info.PicTable.Frames;
+      ObservableCollection<EventObjectPicTable.Frame> frames = ViewModel.CurrentObject.Info.PicTable.Frames;
       int neededFrames = (curIndex - frames.Count) + 1;
       if (neededFrames <= 0)
         return;
@@ -74,7 +75,7 @@ namespace DecompEditor.Editors {
     }
 
     private void removeIndexButtom_Click(object sender, RoutedEventArgs evt) {
-      System.Collections.ObjectModel.ObservableCollection<EventObjectPicTable.Frame> frames = ViewModel.CurrentObject.Info.PicTable.Frames;
+      ObservableCollection<EventObjectPicTable.Frame> frames = ViewModel.CurrentObject.Info.PicTable.Frames;
       for (int i = ViewModel.AnimTableIndex, e = frames.Count; i != e; ++i)
         frames.RemoveAt(ViewModel.AnimTableIndex);
       ViewModel.AnimTableIndex -= 1;

@@ -1,9 +1,32 @@
-﻿using System;
+﻿using DecompEditor.Utils;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
-namespace DecompEditor.Utils {
-  class CParser {
+namespace DecompEditor.ParserUtils {
+  public class CDefine {
+    /// <summary>
+    /// The raw C identifier of the define.
+    /// </summary>
+    public string Identifier { get; set; }
+    /// <summary>
+    /// A name suitable for use as a C variable name.
+    /// </summary>
+    public string VariableName => Identifier.fromSnakeToPascal();
+    public int Order { get; set; }
+
+    public override string ToString() => Identifier.fromSnakeToPascalSentence();
+
+    public static bool operator <(CDefine a, CDefine b) => a.Order < b.Order;
+    public static bool operator >(CDefine a, CDefine b) => a.Order > b.Order;
+  }
+
+  public abstract class DeserializerBase {
+    public abstract bool tryDeserialize(string currentLine, StreamReader reader);
+  }
+  public abstract class StructBodyDeserializer : DeserializerBase {
     public enum NameKind {
       EnumBracket,
       StructElement,
@@ -90,39 +113,193 @@ namespace DecompEditor.Utils {
       }
     }
 
-    public class Struct {
-      class StructValue {
-        public ValueKind kind;
-        public ElementValueHandler deserializeHandler;
-      };
+    class Value {
+      public ValueKind kind;
+      public ElementValueHandler deserializeHandler;
+    };
 
-      readonly List<StructValue> values = new List<StructValue>();
-      readonly Dictionary<string, int> nameToElementIndex = new Dictionary<string, int>();
+    readonly List<Value> values = new List<Value>();
+    readonly Dictionary<string, int> nameToElementIndex = new Dictionary<string, int>();
 
-      public void deserialize(StreamReader stream) {
-        do {
-          // Try to parse an element line.
-          string line = stream.ReadLine().TrimStart();
-          if (!Element.tryDeserializeName(ref line, NameKind.StructElement, out string name))
-            break;
-          if (!nameToElementIndex.TryGetValue(name, out int elementIndex))
-            continue;
-          StructValue element = values[elementIndex];
-          Element.deserializeValue(line, element.kind, element.deserializeHandler);
-        } while (true);
+    protected void deserializeBody(string line, StreamReader stream) {
+      while (Element.tryDeserializeName(ref line, NameKind.StructElement, out string name)) {
+        if (nameToElementIndex.TryGetValue(name, out int elementIndex)) {
+          Value element = values[elementIndex];
+          if (element != null)
+            Element.deserializeValue(line, element.kind, element.deserializeHandler);
+        }
+        line = stream.ReadLine().Trim();
+      }
+    }
+    protected void deserializeInlineBody(string line, StreamReader stream) {
+      line = line.Substring(0, line.LastIndexOf('}') - 0);
+      string[] elements = line.Split(',', StringSplitOptions.RemoveEmptyEntries);
+      if (elements.Length != values.Count)
+        throw new Exception("Invalid inline struct element count");
+      for (int i = 0; i != elements.Length; ++i) {
+        if (values[i] != null)
+          Element.deserializeValue(line, values[i].kind, values[i].deserializeHandler);
+      }
+    }
+
+    public void addIgnored(string name) {
+      nameToElementIndex.Add(name, values.Count);
+      values.Add(null);
+    }
+    public void addEnumList(string name, EnumListHandler handler) => addValue(name, ValueKind.EnumList, (obj) => handler(obj as string[]));
+    public void addEnumMask(string name, EnumMaskHandler handler) => addValue(name, ValueKind.EnumMask, (obj) => handler(obj as string[]));
+    public void addEnum(string name, EnumHandler handler) => addValue(name, ValueKind.Enum, (obj) => handler(obj as string));
+    public void addInteger(string name, IntegerHandler handler) => addValue(name, ValueKind.Integer, (obj) => handler((int)obj));
+    public void addString(string name, StringHandler handler) => addValue(name, ValueKind.String, (obj) => handler(obj as string));
+    public void addValue(string name, ValueKind kind, ElementValueHandler handler) {
+      nameToElementIndex.Add(name, values.Count);
+      values.Add(new Value() {
+        kind = kind,
+        deserializeHandler = handler
+      });
+    }
+  }
+  public class StructDeserializer<T> : StructBodyDeserializer where T : new() {
+    /// <summary>
+    /// The current item being deserialized.
+    /// </summary>
+    public T current;
+
+    /// <summary>
+    /// The handler invoked when a new item is deserialized.
+    /// </summary>
+    readonly Action<string, T> handler;
+
+    protected StructDeserializer(Action<string, T> handler) => this.handler = handler;
+    protected StructDeserializer(Action<T> handler) => this.handler = (_, item) => handler(item);
+
+    public override bool tryDeserialize(string currentLine, StreamReader reader) {
+      if (currentLine.tryExtractPrefix("[", "]", out string newItemName))
+        currentLine = reader.ReadLine().Trim();
+      else if (!currentLine.StartsWith("{"))
+        return false;
+
+      // Deserialize the body.
+      current = new T();
+      if (currentLine.EndsWith(';')) {
+        deserializeInlineBody(currentLine, reader);
+      } else {
+        currentLine = reader.ReadLine().Trim();
+        deserializeBody(currentLine, reader);
       }
 
-      public void addEnumList(string name, EnumListHandler handler) => addValue(name, ValueKind.EnumList, (obj) => handler(obj as string[]));
-      public void addEnumMask(string name, EnumMaskHandler handler) => addValue(name, ValueKind.EnumMask, (obj) => handler(obj as string[]));
-      public void addEnum(string name, EnumHandler handler) => addValue(name, ValueKind.Enum, (obj) => handler(obj as string));
-      public void addInteger(string name, IntegerHandler handler) => addValue(name, ValueKind.Integer, (obj) => handler((int)obj));
-      public void addString(string name, StringHandler handler) => addValue(name, ValueKind.String, (obj) => handler(obj as string));
-      public void addValue(string name, ValueKind kind, ElementValueHandler handler) {
-        nameToElementIndex.Add(name, values.Count);
-        values.Add(new StructValue() {
-          kind = kind,
-          deserializeHandler = handler
-        });
+      handler(newItemName, current);
+      return true;
+    }
+  }
+  public class CustomDeserializer : DeserializerBase {
+    readonly Func<string, StreamReader, bool> tryDeserializeFunc;
+
+    public CustomDeserializer(Func<string, StreamReader, bool> tryDeserializeFunc)
+      => this.tryDeserializeFunc = tryDeserializeFunc;
+
+    public override bool tryDeserialize(string currentLine, StreamReader reader)
+      => tryDeserializeFunc(currentLine, reader);
+  }
+  public class InlineStructDeserializer : CustomDeserializer {
+    public InlineStructDeserializer(Action<string[]> handler)
+      : base((currentLine, stream) => {
+        if (!currentLine.StartsWith('{'))
+          return false;
+        currentLine = currentLine.Substring(1, currentLine.LastIndexOf('}') - 1);
+        handler(currentLine.Split(',').Select(val => val.Trim()).ToArray());
+        return true;
+      }) { }
+  }
+
+  public class ArrayDeserializer : DeserializerBase {
+    bool deserialized = false;
+    DeserializerBase elementDeserializer;
+    protected Action<string> handler;
+    Regex nameRegex;
+
+    bool IsSingleInstance => handler == null;
+
+    public ArrayDeserializer() { }
+    public ArrayDeserializer(DeserializerBase elementDeserializer,
+                             string namePrefix, Action<string> handler)
+      => initialize(elementDeserializer, namePrefix, handler);
+    public ArrayDeserializer(DeserializerBase elementDeserializer, string namePrefix)
+      => initialize(elementDeserializer, namePrefix);
+    protected void initialize(DeserializerBase elementDeserializer,
+                              string namePrefix, Action<string> handler) {
+      this.elementDeserializer = elementDeserializer;
+      this.handler = handler;
+      nameRegex = new Regex("(" + namePrefix + @"[a-zA-Z0-9_]+)\[\] =( {)?$", RegexOptions.Compiled);
+    }
+    protected void initialize(DeserializerBase elementDeserializer, string namePrefix) {
+      this.elementDeserializer = elementDeserializer;
+      nameRegex = new Regex(namePrefix + @"\[\] =( {)?$", RegexOptions.Compiled);
+    }
+
+    public override bool tryDeserialize(string currentLine, StreamReader reader) {
+      if (deserialized)
+        return false;
+      Match match = nameRegex.Match(currentLine);
+      if (!match.Success)
+        return false;
+      handler?.Invoke(match.Groups[1].Value);
+
+      // Skip {
+      if (!currentLine.EndsWith("{"))
+        reader.ReadLine();
+      do {
+        currentLine = reader.ReadLine().Trim();
+        if (currentLine.StartsWith("}"))
+          break;
+        elementDeserializer.tryDeserialize(currentLine, reader);
+      } while (true);
+      deserialized = IsSingleInstance;
+      return true;
+    }
+  }
+
+  public class IncBinDeserializer : DeserializerBase {
+    /// <summary>
+    /// The handler invoked when an item is deserialized.
+    /// </summary>
+    readonly Action<string, string> handler;
+
+    /// <summary>
+    /// The prefix of the INCBIN line being parsed.
+    /// </summary>
+    readonly string linePrefix;
+
+    public IncBinDeserializer(string varPrefix, string size, Action<string, string> handler) {
+      this.handler = handler;
+      linePrefix = string.Format("const {0} {1}", size, varPrefix);
+    }
+
+    public override bool tryDeserialize(string currentLine, StreamReader stream) {
+      if (!currentLine.tryExtractPrefix(linePrefix, "[", out string varName))
+        return false;
+      int skipLen = currentLine.IndexOf('\"') + 1;
+      string fileName = currentLine[skipLen..currentLine.IndexOf('.', skipLen)];
+      handler(varName, fileName);
+      return true;
+    }
+  }
+  public class FileDeserializer {
+    readonly List<DeserializerBase> deserializers = new List<DeserializerBase>();
+
+    public void add(DeserializerBase deserializer) => deserializers.Add(deserializer);
+    public void add(Func<string, StreamReader, bool> tryDeserializeFunc) => add(new CustomDeserializer(tryDeserializeFunc));
+
+    public void deserialize(StreamReader reader) {
+      while (!reader.EndOfStream) {
+        string currentLine = reader.ReadLine().Trim();
+        if (currentLine.Length == 0)
+          continue;
+
+        foreach (DeserializerBase deserializer in deserializers) {
+          if (deserializer.tryDeserialize(currentLine, reader))
+            break;
+        }
       }
     }
   }

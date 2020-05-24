@@ -19,7 +19,10 @@ namespace DecompEditor.Utils {
       result = string.Empty;
       if (!str.StartsWith(filter))
         return false;
-      result = str.Substring(filter.Length, str.IndexOf(delimiter, filter.Length + 1) - filter.Length);
+      int endIndex = str.IndexOf(delimiter, filter.Length + 1);
+      if (endIndex == -1)
+        return false;
+      result = str[filter.Length..endIndex];
       return true;
     }
 

@@ -13,12 +13,8 @@
         <utils:ImageConverter x:Key="ImageConverter"/>
     </UserControl.Resources>
     <Grid Margin="0,0,0,17">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="487*"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
         <DockPanel LastChildFill="True" Margin="0,0,0,-14" Grid.RowSpan="2">
-            <ListBox Name="trainerList" Width="208" ItemsSource="{Binding Trainers}" SelectionChanged="trainerList_SelectionChanged" Height="493"
+            <ListBox x:Name="trainerList" Width="208" ItemsSource="{Binding Trainers}" SelectionChanged="trainerList_SelectionChanged" Height="493"
                      DisplayMemberPath="Identifier"/>
             <Canvas Height="474" IsEnabled="{Binding TrainerIsSelected, Mode=OneWay}">
                 <GroupBox Header="Trainer" Height="225" Width="365" DataContext="{Binding CurrentTrainer}">
@@ -42,7 +38,7 @@
                                 <ImageBrush ImageSource="/Editors/baseline_edit_black_18dp.png"/>
                             </Button.Background>
                         </Button>
-                        <ComboBox Name="musicList" Text="{Binding EncounterMusic}" ItemsSource="{Binding ViewModel.EncounterMusic, ElementName=MainEditor}" 
+                        <ComboBox Name="musicList" SelectedValue="{Binding EncounterMusic}" ItemsSource="{Binding ViewModel.EncounterMusic, ElementName=MainEditor}" 
                                   Width="154" Canvas.Left="195" Canvas.Top="90" Background="#FFE5E5E5" ToolTip="The encounter music when battling this trainer."/>
                         <xctk:CheckComboBox x:Name="aiScripts"
                              ItemsSource="{Binding ViewModel.TrainerAIScripts, ElementName=MainEditor}"

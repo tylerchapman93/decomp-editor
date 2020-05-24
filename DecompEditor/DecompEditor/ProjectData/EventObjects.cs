@@ -1,7 +1,7 @@
-﻿using DecompEditor.Utils;
+﻿using DecompEditor.ParserUtils;
+using DecompEditor.Utils;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows.Media.Imaging;
@@ -120,14 +120,13 @@ namespace DecompEditor {
 
     public EventObjectPicTable() => Frames = new ObservableCollection<Frame>();
   }
-  public class EventObjectDatabase : ObservableObject {
+  public class EventObjectDatabase : DatabaseBase {
     ObservableCollection<EventObjectPic> pics;
     readonly OrderedDictionary<string, EventObjectPalette> varToPalette = new OrderedDictionary<string, EventObjectPalette>();
     readonly List<GraphicsInfo> nonObjectGraphicsInfos = new List<GraphicsInfo>();
     readonly List<EventObjectAnimTable> animTables = new List<EventObjectAnimTable>();
     private ObservableCollection<EventObject> objects;
 
-    public bool IsDirty { get; private set; }
     public ObservableCollection<EventObject> Objects { get => objects; set => SetAndTrackItemUpdates(ref objects, value, this); }
 
     public IEnumerable<EventObjectAnimTable> AnimTables => animTables;
@@ -141,10 +140,9 @@ namespace DecompEditor {
     public EventObjectDatabase() {
       Objects = new ObservableCollection<EventObject>();
       Pics = new ObservableCollection<EventObjectPic>();
-      PropertyChanged += (sender, e) => IsDirty = true;
     }
 
-    public void reset() {
+    protected override void reset() {
       animTables.Clear();
       nonObjectGraphicsInfos.Clear();
       Objects.Clear();
@@ -152,20 +150,12 @@ namespace DecompEditor {
       ShadowSizes.Clear();
       TrackTypes.Clear();
       varToPalette.Clear();
-      IsDirty = false;
     }
 
-    public void load(string projectDir) {
-      reset();
-      new Deserializer(this).deserialize(projectDir);
-      IsDirty = false;
-    }
-    public void save(string projectDir) {
-      if (!IsDirty)
-        return;
-      new Serializer(this).serialize(projectDir);
-      IsDirty = false;
-    }
+    protected override void deserialize(ProjectDeserializer serializer)
+      => new Deserializer(this).deserialize(serializer);
+    protected override void serialize(ProjectSerializer serializer)
+      => new Serializer(this).serialize(serializer);
 
     class Deserializer {
       class PicTableMap {
@@ -190,28 +180,6 @@ namespace DecompEditor {
           return table;
         }
       };
-      class GraphicsInfoStruct : CParser.Struct {
-        public GraphicsInfo currentInfo;
-        public PicTableMap varToPicTable;
-        public Dictionary<string, EventObjectAnimTable> varToAnimTable;
-        public Dictionary<string, EventObjectPalette> idToPalette;
-
-        public GraphicsInfoStruct() {
-          addEnum("paletteTag1", (val) => currentInfo.Palette = idToPalette[val]);
-          addEnum("paletteTag2", (val) => currentInfo.ReflectionPalette = val);
-          addInteger("width", (val) => currentInfo.Width = val);
-          addInteger("height", (val) => currentInfo.Height = val);
-          addInteger("paletteSlot", (val) => currentInfo.PaletteSlot = val);
-          addEnum("shadowSize", (val) => currentInfo.ShadowSize = val.Remove(0, "SHADOW_SIZE_".Length));
-          addEnum("inanimate", (val) => currentInfo.Inanimate = val[0] != 'F');
-          addEnum("disableReflectionPaletteLoad", (val) => currentInfo.EnableReflectionPaletteLoad = val[0] == 'F');
-          addEnum("tracks", (val) => currentInfo.Tracks = val.Remove(0, "TRACKS_".Length));
-          addEnum("anims", (val) => currentInfo.Animations = varToAnimTable[val]);
-          addEnum("images", (val) => currentInfo.PicTable = varToPicTable.GetValue(val));
-          addEnum("affineAnims", (val) => currentInfo.AffineAnimations = val);
-        }
-      }
-      static readonly GraphicsInfoStruct infoSerializer = new GraphicsInfoStruct();
       readonly EventObjectDatabase database;
       readonly Dictionary<string, GraphicsInfo> cppVarToGraphicsInfo = new Dictionary<string, GraphicsInfo>();
       readonly Dictionary<string, EventObjectAnimTable> varToAnimTable = new Dictionary<string, EventObjectAnimTable>();
@@ -219,59 +187,40 @@ namespace DecompEditor {
       readonly Dictionary<string, EventObjectPic> idToPic = new Dictionary<string, EventObjectPic>();
       readonly PicTableMap varToPicTable = new PicTableMap();
 
-      public Deserializer(EventObjectDatabase database) {
-        this.database = database;
-        infoSerializer.varToAnimTable = varToAnimTable;
-        infoSerializer.idToPalette = idToPalette;
-        infoSerializer.varToPicTable = varToPicTable;
+      public Deserializer(EventObjectDatabase database) => this.database = database;
+
+      public void deserialize(ProjectDeserializer deserializer) {
+        loadPicsAndPalettes(deserializer);
+        loadPaletteIDs(deserializer);
+        loadAnimTables(deserializer);
+        loadPicTables(deserializer);
+        loadGraphicsInfos(deserializer);
+        loadTracksAndShadowSizes(deserializer);
+        loadObjects(deserializer);
       }
 
-      public void deserialize(string projectDir) {
-        loadPicsAndPalettes(projectDir);
-        loadPaletteIDs(projectDir);
-        loadAnimTables(projectDir);
-        loadPicTables(projectDir);
-        loadGraphicsInfos(projectDir);
-        loadTracksAndShadowSizes(projectDir);
-        loadObjects(projectDir);
-      }
-
-      void loadPicsAndPalettes(string projectDir) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics.h"));
+      void loadPicsAndPalettes(ProjectDeserializer deserializer) {
         var picPaths = new HashSet<string>();
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
-          if (line.StartsWith("const u32 gObjectEventPic_")) {
-            int skipLen = "const u32 gObjectEventPic_".Length;
-            string cppVar = line.Substring(skipLen, line.IndexOf('[') - skipLen);
-            string filename = string.Empty;
-            CParser.Element.deserializeValue(line, CParser.ValueKind.String, (value) => filename = value as string);
-            string path = Path.ChangeExtension(filename, ".png");
-            var pic = new EventObjectPic() {
-              Identifier = cppVar,
-              Path = Path.ChangeExtension(path.Remove(0, "graphics/object_events/pics/".Length), null),
-              FullPath = Path.Combine(projectDir, path)
-            };
-            picPaths.Add(path);
-            idToPic.Add(cppVar, pic);
-            database.Pics.Add(pic);
-            continue;
-          }
-          if (line.StartsWith("const u16 gObjectEventPalette")) {
-            if (line.EndsWith("{};"))
-              continue;
-
-            int skipLen = "const u16 ".Length;
-            string cppVar = line.Substring(skipLen, line.IndexOf('[') - skipLen);
-            string filename = string.Empty;
-            CParser.Element.deserializeValue(line, CParser.ValueKind.String, (value) => filename = value as string);
-            database.varToPalette.Add(cppVar, new EventObjectPalette() {
-              CppVariable = cppVar,
-              FilePath = Path.ChangeExtension(filename, ".pal")
-            });
-            continue;
-          }
-        }
+        var fileDeserializer = new FileDeserializer();
+        fileDeserializer.add(new IncBinDeserializer("gObjectEventPic_", "u32", (cppVar, fileName) => {
+          string path = Path.ChangeExtension(fileName, ".png");
+          var pic = new EventObjectPic() {
+            Identifier = cppVar,
+            Path = Path.ChangeExtension(path.Remove(0, "graphics/object_events/pics/".Length), null),
+            FullPath = Path.Combine(deserializer.project.ProjectDir, path)
+          };
+          picPaths.Add(path);
+          idToPic.Add(cppVar, pic);
+          database.Pics.Add(pic);
+        }));
+        fileDeserializer.add(new IncBinDeserializer("gObjectEventPalette", "u16", (cppVar, fileName) => {
+          cppVar = "gObjectEventPalette" + cppVar;
+          database.varToPalette.Add(cppVar, new EventObjectPalette() {
+            CppVariable = cppVar,
+            FilePath = Path.ChangeExtension(fileName, ".pal")
+          });
+        }));
+        deserializer.deserializeFile(fileDeserializer, "src", "data", "object_events", "object_event_graphics.h");
 
         // Remove all of the palettes whose file paths match a present picture, these
         // palettes will be generated from that image.
@@ -280,164 +229,129 @@ namespace DecompEditor {
           if (picPaths.Contains(Path.ChangeExtension(kv.Value.FilePath, ".png")))
             toRemove.Add(kv.Key);
         }
-
         foreach (string key in toRemove)
           database.varToPalette.Remove(key);
-        reader.Close();
       }
-      void loadPaletteIDs(string projectDir) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "event_object_movement.c"));
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
-          if (!line.StartsWith("const struct SpritePalette sObjectEventSpritePalettes[]"))
-            continue;
-          do {
-            line = reader.ReadLine().Remove(0, "    {".Length);
-            if (line.StartsWith("NULL"))
-              break;
-            string cppVar = line.Substring(0, line.IndexOf(','));
-            string fullId = line.Substring(cppVar.Length + 2, line.Length - cppVar.Length - 4).TrimStart();
-
-            if (!database.varToPalette.TryGetValue(cppVar, out EventObjectPalette pal)) {
-              idToPalette.Add(fullId, EventObjectPalette.GenerateFromFileInst);
-            } else {
-              pal.Identifier = fullId.Remove(0, "OBJ_EVENT_PAL_TAG_".Length);
-              idToPalette.Add(fullId, pal);
-            }
-          } while (true);
-          break;
-        }
-        reader.Close();
+      void loadPaletteIDs(ProjectDeserializer deserializer) {
+        var paletteDeserializer = new InlineStructDeserializer((vals) => {
+          string cppVar = vals[0], fullId = vals[1];
+          if (!database.varToPalette.TryGetValue(cppVar, out EventObjectPalette pal)) {
+            idToPalette.Add(fullId, EventObjectPalette.GenerateFromFileInst);
+          } else {
+            pal.Identifier = fullId.Remove(0, "OBJ_EVENT_PAL_TAG_".Length);
+            idToPalette.Add(fullId, pal);
+          }
+        });
+        var palArrayDeserializer = new ArrayDeserializer(paletteDeserializer, "sObjectEventSpritePalettes");
+        deserializer.deserializeFile(palArrayDeserializer, "src", "event_object_movement.c");
       }
-      void loadObjects(string projectDir) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics_info_pointers.h"));
+      void loadObjects(ProjectDeserializer deserializer) {
         var usedInfos = new HashSet<string>();
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
-          if (line.StartsWith("const struct ObjectEventGraphicsInfo g")) {
-            int skipLen = "const struct ObjectEventGraphicsInfo ".Length;
-            string cppVar = line.Substring(skipLen, line.Length - skipLen - 1);
-            if (!cppVarToGraphicsInfo.ContainsKey(cppVar)) {
-              cppVarToGraphicsInfo.Add(cppVar, new GraphicsInfo() {
-                CppVariable = cppVar
-              });
-            }
-            continue;
-          }
-          if (line.StartsWith("    [OBJ_EVENT_GFX")) {
-            int skipLen = "    [OBJ_EVENT_GFX_".Length;
-            string objectID = line.Substring(skipLen, line.IndexOf(']') - skipLen);
-            skipLen = line.LastIndexOf('&') + 1;
-            string infoVar = line.Substring(skipLen, line.Length - skipLen - 1);
-            database.Objects.Add(new EventObject() {
-              Identifier = objectID,
-              Info = cppVarToGraphicsInfo[infoVar]
+        var fileDeserializer = new FileDeserializer();
+        fileDeserializer.add((currentLine, _) => {
+          if (!currentLine.tryExtractPrefix("const struct ObjectEventGraphicsInfo ", ";", out string cppVar))
+            return false;
+          if (!cppVarToGraphicsInfo.ContainsKey(cppVar)) {
+            cppVarToGraphicsInfo.Add(cppVar, new GraphicsInfo() {
+              CppVariable = cppVar
             });
-            usedInfos.Add(infoVar);
-            continue;
           }
-        }
+          return true;
+        });
+        fileDeserializer.add((currentLine, _) => {
+          if (!currentLine.tryExtractPrefix("[OBJ_EVENT_GFX_", "]", out string objectID))
+            return false;
+          int skipLen = currentLine.LastIndexOf('&') + 1;
+          string infoVar = currentLine.Substring(skipLen, currentLine.Length - skipLen - 1);
+          database.Objects.Add(new EventObject() {
+            Identifier = objectID,
+            Info = cppVarToGraphicsInfo[infoVar]
+          });
+          usedInfos.Add(infoVar);
+          return true;
+        });
+        deserializer.deserializeFile(fileDeserializer, "src", "data", "object_events", "object_event_graphics_info_pointers.h");
+
+        // Check for any graphics info objects that aren't used by event objects.
         foreach (GraphicsInfo info in cppVarToGraphicsInfo.Values) {
           if (!usedInfos.Contains(info.CppVariable))
             database.nonObjectGraphicsInfos.Add(info);
         }
-
-        reader.Close();
       }
-      void loadAnimTables(string projectDir) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "object_events", "object_event_anims.h"));
-        while (!reader.EndOfStream) {
+      void loadAnimTables(ProjectDeserializer deserializer) {
+        deserializer.deserializeFile((reader) => {
           if (!reader.ReadLine().tryExtractPrefix("const union AnimCmd *const gObjectEventImageAnimTable_", "[", out string name))
-            continue;
+            return;
           var animTable = new EventObjectAnimTable() {
             Identifier = "gObjectEventImageAnimTable_" + name,
             PrettyName = name.fromPascalToSentence()
           };
           varToAnimTable.Add(animTable.Identifier, animTable);
           database.animTables.Add(animTable);
-        }
-        reader.Close();
+        }, "src", "data", "object_events", "object_event_anims.h");
       }
-      void loadPicTables(string projectDir) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "object_events", "object_event_pic_tables.h"));
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
-          if (!line.StartsWith("const struct SpriteFrameImage gObjectEventPicTable_"))
-            continue;
-          int skipLen = "const struct SpriteFrameImage ".Length;
-          string cppVar = line.Substring(skipLen, line.Length - skipLen - 6);
+      void loadPicTables(ProjectDeserializer deserializer) {
+        deserializer.deserializeFile((stream) => {
+          if (!stream.ReadLine().tryExtractPrefix("const struct SpriteFrameImage gObjectEventPicTable_", "[", out string cppVar))
+            return;
           var table = new EventObjectPicTable() {
-            CppVar = cppVar
+            CppVar = "gObjectEventPicTable_" + cppVar
           };
           do {
-            line = reader.ReadLine().Trim();
-            if (line[0] == '}')
+            string line = stream.ReadLine().Trim();
+            if (line.StartsWith("}"))
               break;
             if (line.StartsWith("obj_frame_tiles")) {
-              skipLen = line.IndexOf('(') + 1 + "gObjectEventPic_".Length;
+              int skipLen = line.IndexOf('(') + "(gObjectEventPic_".Length;
               table.Frames.Add(new EventObjectPicTable.Frame() {
                 Pic = idToPic[line.Substring(skipLen, line.Length - skipLen - 2)],
               });
               continue;
             }
 
-            line = line.Remove(0, "overworld_frame(".Length);
-            string[] elements = line.Remove(line.Length - 2).Split(", ");
+            line = line.Remove(0, "overworld_frame(gObjectEventPic_".Length);
+            string[] elements = line.Remove(line.Length - "),".Length).Split(", ");
             table.Frames.Add(new EventObjectPicTable.Frame() {
-              Pic = idToPic[elements[0].Remove(0, "gObjectEventPic_".Length)],
+              Pic = idToPic[elements[0]],
               Index = int.Parse(elements[3])
             });
           } while (true);
           varToPicTable.Add(table);
-        }
-        reader.Close();
+        }, "src", "data", "object_events", "object_event_pic_tables.h");
       }
-      void loadGraphicsInfos(string projectDir) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics_info.h"));
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
-          if (!line.StartsWith("const struct ObjectEventGraphicsInfo g"))
-            continue;
-          int skipLen = "const struct ObjectEventGraphicsInfo ".Length;
-          string cppVar = line.Substring(skipLen, line.IndexOf(' ', skipLen) - skipLen);
+      void loadGraphicsInfos(ProjectDeserializer deserializer) {
+        deserializer.deserializeFile(new CustomDeserializer((line, _) => {
+          if (!line.tryExtractPrefix("const struct ObjectEventGraphicsInfo ", " ", out string cppVar))
+            return false;
           var info = new GraphicsInfo() {
             CppVariable = cppVar
           };
-
-          // Parse the inline variant.
-          if (line.EndsWith(";")) {
-            skipLen += cppVar.Length + 4;
-            string[] elements = line.Substring(skipLen, line.Length - skipLen - 2).Split(", ");
-            info.Palette = idToPalette[elements[1]];
-            info.ReflectionPalette = elements[2];
-            info.Width = int.Parse(elements[4]);
-            info.Height = int.Parse(elements[5]);
-            info.PaletteSlot = int.Parse(elements[6]);
-            info.ShadowSize = elements[7].Remove(0, "SHADOW_SIZE_".Length);
-            info.Inanimate = elements[8][0] != 'F';
-            info.EnableReflectionPaletteLoad = elements[9][0] == 'F';
-            info.Tracks = elements[10].Remove(0, "TRACKS_".Length);
-            info.Animations = varToAnimTable[elements[13]];
-            info.PicTable = varToPicTable.GetValue(elements[14]);
-            info.AffineAnimations = elements[15];
-          } else {
-            infoSerializer.currentInfo = info;
-            infoSerializer.deserialize(reader);
-          }
           cppVarToGraphicsInfo.Add(cppVar, info);
-        }
-        reader.Close();
+
+          string[] elements = line[(line.IndexOf('{') + 1)..(line.Length - 2)].Split(", ");
+          info.Palette = idToPalette[elements[1]];
+          info.ReflectionPalette = elements[2];
+          info.Width = int.Parse(elements[4]);
+          info.Height = int.Parse(elements[5]);
+          info.PaletteSlot = int.Parse(elements[6]);
+          info.ShadowSize = elements[7].Remove(0, "SHADOW_SIZE_".Length);
+          info.Inanimate = elements[8][0] != 'F';
+          info.EnableReflectionPaletteLoad = elements[9][0] == 'F';
+          info.Tracks = elements[10].Remove(0, "TRACKS_".Length);
+          info.Animations = varToAnimTable[elements[13]];
+          info.PicTable = varToPicTable.GetValue(elements[14]);
+          info.AffineAnimations = elements[15];
+          return true;
+        }), "src", "data", "object_events", "object_event_graphics_info.h");
       }
-      void loadTracksAndShadowSizes(string projectDir) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "include", "constants", "event_objects.h"));
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
+      void loadTracksAndShadowSizes(ProjectDeserializer deserializer) {
+        deserializer.deserializeFile((stream) => {
+          string line = stream.ReadLine();
           if (line.tryExtractPrefix("#define SHADOW_SIZE_", " ", out string enumName))
             database.ShadowSizes.Add(enumName);
           else if (line.tryExtractPrefix("#define TRACKS_", " ", out enumName))
             database.TrackTypes.Add(enumName);
-        }
-        reader.Close();
+        }, "include", "constants", "event_objects.h");
       }
     }
     class Serializer {
@@ -448,15 +362,15 @@ namespace DecompEditor {
 
       public Serializer(EventObjectDatabase database) => this.database = database;
 
-      public void serialize(string projectDir) {
+      public void serialize(ProjectSerializer serializer) {
         populatePalettesGeneratedFromSprites();
-        updateSpriteSheetMakeRules(projectDir);
-        savePaletteIDs(projectDir);
-        saveObjectIds(projectDir);
-        saveGraphicsInfoPointers(projectDir);
-        savePicTables(projectDir);
-        saveGraphicsInfos(projectDir);
-        savePicsAndPalettes(projectDir);
+        updateSpriteSheetMakeRules(serializer);
+        savePaletteIDs(serializer);
+        saveObjectIds(serializer);
+        saveGraphicsInfoPointers(serializer);
+        savePicTables(serializer);
+        saveGraphicsInfos(serializer);
+        savePicsAndPalettes(serializer);
       }
 
       void populatePalettesGeneratedFromSprites() {
@@ -473,7 +387,7 @@ namespace DecompEditor {
         }
       }
 
-      void updateSpriteSheetMakeRules(string projectDir) {
+      void updateSpriteSheetMakeRules(ProjectSerializer serializer) {
         var checkedFiles = new HashSet<EventObjectPic>();
         var needSprites = new Dictionary<string, Tuple<int, int>>();
         foreach (EventObject obj in database.Objects) {
@@ -492,7 +406,7 @@ namespace DecompEditor {
 
         if (needSprites.Count == 0)
           return;
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "spritesheet_rules.mk"));
+        string[] curLines = File.ReadAllLines(Path.Combine(serializer.project.ProjectDir, "spritesheet_rules.mk"));
         bool updatedExistingSheet = false;
         for (int i = 0, e = curLines.Length; i != e; ++i) {
           if (!curLines[i].tryExtractPrefix("$(OBJEVENTGFXDIR)/", ".", out string linePath))
@@ -514,14 +428,10 @@ namespace DecompEditor {
           }
         }
 
-        if (updatedExistingSheet) {
-          var writer = new StreamWriter(Path.Combine(projectDir, "spritesheet_rules.mk"), false);
-          foreach (string line in curLines)
-            writer.WriteLine(line);
-          writer.Close();
-        }
+        if (updatedExistingSheet)
+          File.WriteAllLines(Path.Combine(serializer.project.ProjectDir, "spritesheet_rules.mk"), curLines);
         if (needSprites.Count != 0) {
-          var writer = new StreamWriter(Path.Combine(projectDir, "spritesheet_rules.mk"), true);
+          var writer = new StreamWriter(Path.Combine(serializer.project.ProjectDir, "spritesheet_rules.mk"), true);
           foreach (KeyValuePair<string, Tuple<int, int>> pathAndDims in needSprites) {
             writer.WriteLine();
             writer.WriteLine("$(OBJEVENTGFXDIR)/" + pathAndDims.Key + ".4bpp: %.4bpp: %.png");
@@ -530,118 +440,91 @@ namespace DecompEditor {
           writer.Close();
         }
       }
-      void savePaletteIDs(string projectDir) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "src", "event_object_movement.c"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "event_object_movement.c"), false);
-
-        // Keep the prefix lines as-is.
-        int index = 0;
-        while (!curLines[index].StartsWith("#define OBJ_EVENT_PAL_TAG_"))
-          writer.WriteLine(curLines[index++]);
-        while (curLines[index++].Length != 0)
-          continue;
-
+      void savePaletteIDs(ProjectSerializer serializer) {
         IEnumerable<EventObjectPalette> palettes = database.varToPalette.Values.Concat(picPalettes.Values);
-
         int longestPalID = 4, longestPalVar = 4;
-        foreach (EventObjectPalette pal in palettes) {
-          longestPalID = Math.Max(longestPalID, pal.Identifier.Length);
-          longestPalVar = Math.Max(longestPalVar, pal.CppVariable.Length);
-        }
-        int palIndex = 0x1103;
-        foreach (EventObjectPalette pal in palettes) {
-          writer.WriteLine("#define OBJ_EVENT_PAL_TAG_" + pal.Identifier.PadRight(longestPalID) +
-                           " 0x" + string.Format("{0:X}", palIndex++));
-        }
-        writer.WriteLine("#define OBJ_EVENT_PAL_TAG_" + "NONE".PadRight(longestPalID) + " 0x11FF");
-        writer.WriteLine();
 
-        while (!curLines[index].StartsWith("const struct SpritePalette sObjectEventSpritePalettes[]"))
-          writer.WriteLine(curLines[index++]);
-        while (curLines[index++].Length != 0)
-          continue;
-
-        writer.WriteLine("const struct SpritePalette sObjectEventSpritePalettes[] = {");
-        foreach (EventObjectPalette pal in palettes) {
-          writer.WriteLine("    {" + (pal.CppVariable + ", ").PadRight(longestPalVar + 2) +
-                           "OBJ_EVENT_PAL_TAG_" + pal.Identifier + "},");
-        }
-        writer.WriteLine("    {" + "NULL, ".PadRight(longestPalVar + 2) + "0x0000},");
-        writer.WriteLine("};\n");
-
-        while (index != curLines.Length)
-          writer.WriteLine(curLines[index++]);
-        writer.Close();
-      }
-      void saveObjectIds(string projectDir) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "include", "constants", "event_objects.h"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "include", "constants", "event_objects.h"), false);
-
-        // Keep the prefix lines as-is.
-        int index = 0;
-        while (!curLines[index].StartsWith("#define OBJ_EVENT_GFX_"))
-          writer.WriteLine(curLines[index++]);
-        while (!curLines[index++].StartsWith("#define NUM_OBJ_EVENT_GFX"))
-          continue;
-
-        int longestedID = 0;
-        for (int i = 0; i != database.Objects.Count; ++i)
-          longestedID = Math.Max(longestedID, database.Objects[i].Identifier.Length);
-        longestedID += 3;
-        for (int i = 0; i != database.Objects.Count; ++i)
-          writer.WriteLine("#define OBJ_EVENT_GFX_" + database.Objects[i].Identifier.PadRight(longestedID + 1) + i);
-
-        writer.WriteLine();
-        writer.WriteLine("#define NUM_OBJ_EVENT_GFX" + "".PadRight(longestedID - 2) + database.Objects.Count.ToString());
-
-        while (index != curLines.Length)
-          writer.WriteLine(curLines[index++]);
-        writer.Close();
-      }
-      void saveGraphicsInfoPointers(string projectDir) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics_info_pointers.h"));
-        var stream = new StreamWriter(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics_info_pointers.h"), false);
-        foreach (GraphicsInfo info in database.Objects.Select(obj => obj.Info).Concat(database.nonObjectGraphicsInfos))
-          stream.WriteLine("const struct ObjectEventGraphicsInfo " + info.CppVariable + ";");
-        stream.WriteLine();
-
-        stream.WriteLine("const struct ObjectEventGraphicsInfo *const gObjectEventGraphicsInfoPointers[NUM_OBJ_EVENT_GFX] = {");
-        int longestedObjId = 0;
-        foreach (EventObject obj in database.Objects)
-          longestedObjId = Math.Max(longestedObjId, obj.Identifier.Length);
-
-        foreach (EventObject obj in database.Objects) {
-          stream.WriteLine("    [OBJ_EVENT_GFX_" + obj.Identifier + "] = ".PadRight(longestedObjId) +
-                           "&" + obj.Info.CppVariable + ",");
-        }
-        stream.WriteLine("};");
-
-        int skipLineIndex = 0;
-        while (!curLines[skipLineIndex++].StartsWith("}"))
-          continue;
-        while (skipLineIndex != curLines.Length)
-          stream.WriteLine(curLines[skipLineIndex++]);
-        stream.Close();
-      }
-      void savePicTables(string projectDir) {
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "data", "object_events", "object_event_pic_tables.h"), false);
-        foreach (GraphicsInfo info in database.Objects.Select(obj => obj.Info)
-                                             .Concat(database.nonObjectGraphicsInfos)) {
-          if (info.PicTable.Frames.Count == 0)
-            continue;
-          writer.WriteLine("const struct SpriteFrameImage " + info.PicTable.CppVar + "[] = {");
-          int width = info.Width / 8, height = info.Height / 8;
-          foreach (EventObjectPicTable.Frame frame in info.PicTable.Frames) {
-            if (framesWithoutSpriteSheets.Contains(frame)) {
-              writer.WriteLine("    obj_frame_tiles(gObjectEventPic_" + frame.Pic.Identifier + "),");
-            } else {
-              writer.WriteLine("    overworld_frame(gObjectEventPic_" + frame.Pic.Identifier + ", " + width +
-                               ", " + height + ", " + frame.Index + "),");
-            }
+        Func<string, bool> palTagCheck = (str) => str.StartsWith("#define OBJ_EVENT_PAL_TAG_");
+        Action<StreamWriter> palTagHandler = (stream) => {
+          foreach (EventObjectPalette pal in palettes) {
+            longestPalID = Math.Max(longestPalID, pal.Identifier.Length);
+            longestPalVar = Math.Max(longestPalVar, pal.CppVariable.Length);
           }
-          writer.WriteLine("};\n");
-        }
-        writer.Close();
+          int palIndex = 0x1103;
+          foreach (EventObjectPalette pal in palettes) {
+            stream.WriteLine("#define OBJ_EVENT_PAL_TAG_" + pal.Identifier.PadRight(longestPalID) +
+                             " 0x" + string.Format("{0:X}", palIndex++));
+          }
+          stream.WriteLine("#define OBJ_EVENT_PAL_TAG_" + "NONE".PadRight(longestPalID) + " 0x11FF");
+          stream.WriteLine();
+        };
+        Func<string, bool> spritePalCheck = (str) => str.EndsWith("sObjectEventSpritePalettes[] = {");
+        Action<StreamWriter> spritePalHandler = (stream) => {
+          stream.WriteLine("const struct SpritePalette sObjectEventSpritePalettes[] = {");
+          foreach (EventObjectPalette pal in palettes) {
+            stream.WriteLine("    {" + (pal.CppVariable + ", ").PadRight(longestPalVar + 2) +
+                             "OBJ_EVENT_PAL_TAG_" + pal.Identifier + "},");
+          }
+          stream.WriteLine("    {" + "NULL, ".PadRight(longestPalVar + 2) + "0x0000},");
+          stream.WriteLine("};\n");
+        };
+        Func<string, bool> sectionEnd = (str) => str.Length == 0;
+        serializer.serializePartialFile(new[] { palTagCheck, spritePalCheck }, new[] { sectionEnd, sectionEnd },
+                                        new[] { palTagHandler, spritePalHandler }, "src", "event_object_movement.c");
+      }
+      void saveObjectIds(ProjectSerializer serializer) {
+        Action<StreamWriter> handler = stream => {
+          int longestedID = 0;
+          for (int i = 0; i != database.Objects.Count; ++i)
+            longestedID = Math.Max(longestedID, database.Objects[i].Identifier.Length);
+          longestedID += 3;
+          for (int i = 0; i != database.Objects.Count; ++i)
+            stream.WriteLine("#define OBJ_EVENT_GFX_" + database.Objects[i].Identifier.PadRight(longestedID + 1) + i);
+
+          stream.WriteLine();
+          stream.WriteLine("#define NUM_OBJ_EVENT_GFX" + "".PadRight(longestedID - 2) + database.Objects.Count.ToString());
+        };
+        serializer.serializePartialFile(str => str.StartsWith("#define OBJ_EVENT_GFX_"),
+                                        str => str.StartsWith("#define NUM_OBJ"),
+                                        handler, "include", "constants", "event_objects.h");
+      }
+      void saveGraphicsInfoPointers(ProjectSerializer serializer) {
+        serializer.serializePartialFile(str => true, str => str.StartsWith("}"), stream => {
+          foreach (GraphicsInfo info in database.Objects.Select(obj => obj.Info).Concat(database.nonObjectGraphicsInfos))
+            stream.WriteLine("const struct ObjectEventGraphicsInfo " + info.CppVariable + ";");
+          stream.WriteLine();
+
+          stream.WriteLine("const struct ObjectEventGraphicsInfo *const gObjectEventGraphicsInfoPointers[NUM_OBJ_EVENT_GFX] = {");
+          int longestedObjId = 0;
+          foreach (EventObject obj in database.Objects)
+            longestedObjId = Math.Max(longestedObjId, obj.Identifier.Length);
+
+          foreach (EventObject obj in database.Objects) {
+            stream.WriteLine("    [OBJ_EVENT_GFX_" + obj.Identifier + "] = ".PadRight(longestedObjId) +
+                             "&" + obj.Info.CppVariable + ",");
+          }
+          stream.WriteLine("};");
+        }, "src", "data", "object_events", "object_event_graphics_info_pointers.h");
+      }
+      void savePicTables(ProjectSerializer serializer) {
+        IEnumerable<GraphicsInfo> infos = database.Objects.Select(obj => obj.Info).Concat(database.nonObjectGraphicsInfos);
+        serializer.serializeFile(stream => {
+          foreach (GraphicsInfo info in infos) {
+            if (info.PicTable.Frames.Count == 0)
+              continue;
+            stream.WriteLine("const struct SpriteFrameImage " + info.PicTable.CppVar + "[] = {");
+            int width = info.Width / 8, height = info.Height / 8;
+            foreach (EventObjectPicTable.Frame frame in info.PicTable.Frames) {
+              if (framesWithoutSpriteSheets.Contains(frame)) {
+                stream.WriteLine("    obj_frame_tiles(gObjectEventPic_" + frame.Pic.Identifier + "),");
+              } else {
+                stream.WriteLine("    overworld_frame(gObjectEventPic_" + frame.Pic.Identifier + ", " + width +
+                                 ", " + height + ", " + frame.Index + "),");
+              }
+            }
+            stream.WriteLine("};\n");
+          }
+        }, "src", "data", "object_events", "object_event_pic_tables.h");
       }
       int roundOamSize(int size) {
         if (size <= 8)
@@ -652,81 +535,80 @@ namespace DecompEditor {
           return 32;
         return 64;
       }
-      void saveGraphicsInfos(string projectDir) {
-        var stream = new StreamWriter(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics_info.h"), false);
-        foreach (GraphicsInfo info in database.Objects.Select(obj => obj.Info).Concat(database.nonObjectGraphicsInfos)) {
-          string palId;
-          if (info.Palette == EventObjectPalette.GenerateFromFileInst)
-            palId = picPalettes[info.PicTable.Frames[0].Pic].Identifier;
-          else
-            palId = info.Palette.Identifier;
+      void saveGraphicsInfos(ProjectSerializer serializer) {
+        serializer.serializeFile(stream => {
+          foreach (GraphicsInfo info in database.Objects.Select(obj => obj.Info).Concat(database.nonObjectGraphicsInfos)) {
+            string palId;
+            if (info.Palette == EventObjectPalette.GenerateFromFileInst)
+              palId = picPalettes[info.PicTable.Frames[0].Pic].Identifier;
+            else
+              palId = info.Palette.Identifier;
 
-          // TODO: It would be nice to print the struct form, but PoryMap can't load that in...
-          stream.Write("const struct ObjectEventGraphicsInfo " + info.CppVariable + " = {");
-          // .tileTag
-          stream.Write("0xFFFF, ");
-          // .paletteTag1
-          stream.Write("OBJ_EVENT_PAL_TAG_" + palId + ", ");
-          // .paletteTag2
-          stream.Write(info.ReflectionPalette + ", ");
-          // .size
-          stream.Write(((info.Width * info.Height * 4) / 8) + ", ");
-          // .width
-          stream.Write(info.Width + ", ");
-          // .height
-          stream.Write(info.Height + ", ");
-          // .paletteSlot
-          stream.Write(info.PaletteSlot + ", ");
-          // .shadowSize
-          stream.Write("SHADOW_SIZE_" + info.ShadowSize + ", ");
-          // .inanimate
-          stream.Write((info.Inanimate ? "TRUE" : "FALSE") + ", ");
-          // .disableReflectionPaletteLoad
-          stream.Write((info.EnableReflectionPaletteLoad ? "FALSE" : "TRUE") + ", ");
-          // .tracks
-          stream.Write("TRACKS_" + info.Tracks + ", ");
-          // .oam
-          stream.Write("&gObjectEventBaseOam_" + roundOamSize(info.Width) + "x" + roundOamSize(info.Height) + ", ");
-          // .subspriteTables
-          stream.Write("gObjectEventSpriteOamTables_" + info.Width + "x" + info.Height + ", ");
-          // .anims
-          stream.Write(info.Animations.Identifier + ", ");
-          // .images
-          stream.Write(info.PicTable.CppVar + ", ");
-          // .affineAnims
-          stream.Write(info.AffineAnimations);
-          stream.WriteLine("};\n");
-        }
-        stream.Close();
+            // TODO: It would be nice to print the struct form, but PoryMap can't load that in...
+            stream.Write("const struct ObjectEventGraphicsInfo " + info.CppVariable + " = {");
+            // .tileTag
+            stream.Write("0xFFFF, ");
+            // .paletteTag1
+            stream.Write("OBJ_EVENT_PAL_TAG_" + palId + ", ");
+            // .paletteTag2
+            stream.Write(info.ReflectionPalette + ", ");
+            // .size
+            stream.Write(((info.Width * info.Height * 4) / 8) + ", ");
+            // .width
+            stream.Write(info.Width + ", ");
+            // .height
+            stream.Write(info.Height + ", ");
+            // .paletteSlot
+            stream.Write(info.PaletteSlot + ", ");
+            // .shadowSize
+            stream.Write("SHADOW_SIZE_" + info.ShadowSize + ", ");
+            // .inanimate
+            stream.Write((info.Inanimate ? "TRUE" : "FALSE") + ", ");
+            // .disableReflectionPaletteLoad
+            stream.Write((info.EnableReflectionPaletteLoad ? "FALSE" : "TRUE") + ", ");
+            // .tracks
+            stream.Write("TRACKS_" + info.Tracks + ", ");
+            // .oam
+            stream.Write("&gObjectEventBaseOam_" + roundOamSize(info.Width) + "x" + roundOamSize(info.Height) + ", ");
+            // .subspriteTables
+            stream.Write("gObjectEventSpriteOamTables_" + info.Width + "x" + info.Height + ", ");
+            // .anims
+            stream.Write(info.Animations.Identifier + ", ");
+            // .images
+            stream.Write(info.PicTable.CppVar + ", ");
+            // .affineAnims
+            stream.Write(info.AffineAnimations);
+            stream.WriteLine("};\n");
+          }
+        }, "src", "data", "object_events", "object_event_graphics_info.h");
       }
-      void savePicsAndPalettes(string projectDir) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics.h"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics.h"), false);
+      void savePicsAndPalettes(ProjectSerializer serializer) {
+        string[] curLines = File.ReadAllLines(Path.Combine(serializer.project.ProjectDir, "src", "data", "object_events", "object_event_graphics.h"));
+        serializer.serializeFile(stream => {
+          // Copy the existing lines unrelated to even palettes and pictures.
+          foreach (string str in curLines) {
+            if (!str.StartsWith("const u32 gObjectEventPic_") && !str.StartsWith("const u16 gObjectEventPalette"))
+              stream.WriteLine(str);
+          }
 
-        // Copy the existing lines unrelated to even palettes and pictures.
-        foreach (string str in curLines) {
-          if (!str.StartsWith("const u32 gObjectEventPic_") && !str.StartsWith("const u16 gObjectEventPalette"))
-            writer.WriteLine(str);
-        }
+          foreach (EventObjectPic pic in database.pics) {
+            stream.WriteLine("const u32 gObjectEventPic_" + pic.Identifier +
+                             "[] = INCBIN_U32(\"graphics/object_events/pics/" + pic.Path + ".4bpp\");");
+          }
 
-        foreach (EventObjectPic pic in database.pics) {
-          writer.WriteLine("const u32 gObjectEventPic_" + pic.Identifier +
-                           "[] = INCBIN_U32(\"graphics/object_events/pics/" + pic.Path + ".4bpp\");");
-        }
-
-        foreach (KeyValuePair<string, EventObjectPalette> palAndPath in database.varToPalette) {
-          writer.WriteLine("const u16 " + palAndPath.Key + "[] = INCBIN_U16(\"" +
-                           Path.ChangeExtension(palAndPath.Value.FilePath, ".gbapal") + "\");");
-        }
-        foreach (KeyValuePair<EventObjectPic, EventObjectPalette> picAndPal in picPalettes) {
-          writer.WriteLine("const u16 " + picAndPal.Value.CppVariable + "[] = INCBIN_U16(\"" +
-                           Path.ChangeExtension(picAndPal.Value.FilePath, ".gbapal") + "\");");
-        }
-        writer.Close();
+          foreach (KeyValuePair<string, EventObjectPalette> palAndPath in database.varToPalette) {
+            stream.WriteLine("const u16 " + palAndPath.Key + "[] = INCBIN_U16(\"" +
+                             Path.ChangeExtension(palAndPath.Value.FilePath, ".gbapal") + "\");");
+          }
+          foreach (KeyValuePair<EventObjectPic, EventObjectPalette> picAndPal in picPalettes) {
+            stream.WriteLine("const u16 " + picAndPal.Value.CppVariable + "[] = INCBIN_U16(\"" +
+                             Path.ChangeExtension(picAndPal.Value.FilePath, ".gbapal") + "\");");
+          }
+        }, "src", "data", "object_events", "object_event_graphics.h");
 
         // Check to see if any of the pics changed location.
         foreach (EventObjectPic pic in database.pics) {
-          string fullPrettyPath = Path.Combine(projectDir, "graphics/object_events/pics/", pic.Path + ".png");
+          string fullPrettyPath = Path.Combine(serializer.project.ProjectDir, "graphics/object_events/pics/", pic.Path + ".png");
           string normalizedPath = FileUtils.normalizePath(fullPrettyPath);
           if (pic.FullPath == normalizedPath)
             continue;

@@ -1,5 +1,7 @@
-﻿using DecompEditor.Utils;
-using System.Collections.ObjectModel;
+﻿using DecompEditor.ParserUtils;
+using DecompEditor.Utils;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -42,49 +44,30 @@ namespace DecompEditor {
 
     TrainerParty() => Pokemon = new ObservableCollection<Pokemon>();
 
-    internal class Deserializer {
-      class PokemonStruct : CParser.Struct {
-        public ItemDatabase itemDatabase;
-        public MoveDatabase moveDatabase;
-        public PokemonSpeciesDatabase speciesDatabase;
-        public Pokemon currentPokemon;
-
-        public PokemonStruct() {
-          addInteger("iv", (iv) => currentPokemon.Iv = iv);
-          addInteger("lvl", (lvl) => currentPokemon.Level = lvl);
-          addEnum("species", (species) => currentPokemon.Species = speciesDatabase.getFromId(species));
-          addEnum("heldItem", (heldItem) => currentPokemon.HeldItem = itemDatabase.getFromId(heldItem));
-          addEnumList("moves", (moves) => currentPokemon.Moves = new ObservableCollection<Move>(moves.Select(move => moveDatabase.getFromId(move))));
+    internal class Deserializer : ArrayDeserializer {
+      class PokemonDeserializer : StructDeserializer<Pokemon> {
+        public PokemonDeserializer(Action<Pokemon> handler) : base(handler) {
+          addInteger("iv", (iv) => current.Iv = iv);
+          addInteger("lvl", (lvl) => current.Level = lvl);
+          addEnum("species", (species) => current.Species = Project.Instance.Species.getFromId(species));
+          addEnum("heldItem", (heldItem) => current.HeldItem = Project.Instance.Items.getFromId(heldItem));
+          addEnumList("moves", (moves) => current.Moves = new ObservableCollection<Move>(moves.Select(move => Project.Instance.Moves.getFromId(move))));
         }
       }
-      static readonly PokemonStruct pokemonSerializer = new PokemonStruct();
 
-      public static TrainerParty deserialize(StreamReader stream, ItemDatabase itemDatabase,
-                                             MoveDatabase moveDatabase, PokemonSpeciesDatabase speciesDatabase) {
-        pokemonSerializer.itemDatabase = itemDatabase;
-        pokemonSerializer.moveDatabase = moveDatabase;
-        pokemonSerializer.speciesDatabase = speciesDatabase;
-
-        string defLine = stream.ReadLine();
-        defLine = defLine.Remove(defLine.Length - "[] = {".Length);
-
-        var party = new TrainerParty {
-          CppVariable = defLine.Substring(defLine.LastIndexOf(' ') + 1)
-        };
-        while (stream.ReadLine().Trim().StartsWith("{")) {
-          var pkm = new Pokemon();
-          pokemonSerializer.currentPokemon = pkm;
-          pokemonSerializer.deserialize(stream);
+      public Deserializer(Dictionary<string, TrainerParty> cppToParty) {
+        TrainerParty current = null;
+        var pkmDeserializer = new PokemonDeserializer((pkm) => {
           if (pkm.HeldItem == null)
-            pkm.HeldItem = itemDatabase.getFromId("ITEM_NONE");
+            pkm.HeldItem = Project.Instance.Items.getFromId("ITEM_NONE");
           if (pkm.Moves == null)
-            pkm.Moves = new ObservableCollection<Move>(Enumerable.Repeat(moveDatabase.getFromId("MOVE_NONE"), 4));
-          party.Pokemon.Add(pkm);
-        }
-
-        // Read the last line after the party definition.
-        stream.ReadLine();
-        return party;
+            pkm.Moves = new ObservableCollection<Move>(Enumerable.Repeat(Project.Instance.Moves.getFromId("MOVE_NONE"), 4));
+          current.Pokemon.Add(pkm);
+        });
+        initialize(pkmDeserializer, "sParty_", (name) => {
+          current = new TrainerParty() { CppVariable = name };
+          cppToParty.Add(name, current);
+        });
       }
     }
     internal class Serializer {

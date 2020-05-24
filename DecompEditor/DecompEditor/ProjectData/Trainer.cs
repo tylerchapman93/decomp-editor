@@ -1,7 +1,7 @@
-﻿using DecompEditor.Utils;
+﻿using DecompEditor.ParserUtils;
+using DecompEditor.Utils;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 
@@ -9,13 +9,13 @@ namespace DecompEditor {
   public class Trainer : ObservableObject {
     private string identifier;
     private TrainerClass @class;
-    private string encounterMusic;
+    private CDefine encounterMusic;
     private TrainerPic pic;
     private string name;
     private ObservableCollection<Item> items;
     private bool doubleBattle;
     private bool isMale = true;
-    private ObservableCollection<string> aiFlags;
+    private ObservableCollection<CDefine> aiFlags;
     private TrainerParty party;
 
     public string Identifier {
@@ -29,7 +29,7 @@ namespace DecompEditor {
       }
     }
     public TrainerClass Class { get => @class; set => Set(ref @class, value); }
-    public string EncounterMusic { get => encounterMusic; set => Set(ref encounterMusic, value); }
+    public CDefine EncounterMusic { get => encounterMusic; set => Set(ref encounterMusic, value); }
     public TrainerPic Pic { get => pic; set => Set(ref pic, value); }
     public string Name { get => name; set => Set(ref name, value); }
     public ObservableCollection<Item> Items {
@@ -39,171 +39,104 @@ namespace DecompEditor {
     public bool DoubleBattle { get => doubleBattle; set => Set(ref doubleBattle, value); }
     public bool IsMale { get => isMale; set => Set(ref isMale, value); }
     public bool IsFemale { get => !IsMale; set => IsMale = !value; }
-    public ObservableCollection<string> AiFlags {
+    public ObservableCollection<CDefine> AiFlags {
       get => aiFlags;
       set => SetAndTrack(ref aiFlags, value);
     }
     public TrainerParty Party { get => party; set => SetAndTrack(ref party, value); }
 
     public Trainer() {
-      AiFlags = new ObservableCollection<string>();
+      AiFlags = new ObservableCollection<CDefine>();
       Items = new ObservableCollection<Item>();
     }
   }
 
-  class TrainerDatabase : ObservableObject {
+  class TrainerDatabase : DatabaseBase {
     private ObservableCollection<Trainer> trainers;
 
-    public bool IsDirty { get; private set; }
     public ObservableCollection<Trainer> Trainers {
       get => trainers;
       private set => SetAndTrackItemUpdates(ref trainers, value, this);
     }
 
-    public TrainerDatabase() {
-      Trainers = new ObservableCollection<Trainer>();
-      PropertyChanged += (sender, e) => IsDirty = true;
-    }
+    public TrainerDatabase() => Trainers = new ObservableCollection<Trainer>();
 
-    public void reset() {
-      Trainers.Clear();
-      IsDirty = false;
-    }
+    protected override void reset() => Trainers.Clear();
 
-    public void save(string projectDir, BattleAIDatabase battleAI) {
-      if (IsDirty) {
-        Serializer.serialize(projectDir, this, battleAI);
-        IsDirty = false;
-      }
-    }
+    protected override void deserialize(ProjectDeserializer deserializer)
+      => Deserializer.deserialize(deserializer, this);
 
-    public void load(string projectDir, BattleAIDatabase battleAI,
-                     ItemDatabase itemDatabase, MoveDatabase moveDatabase,
-                     PokemonSpeciesDatabase speciesDatabase,
-                     TrainerClassDatabase trainerClassDatabase,
-                     TrainerPicDatabase trainerPicDatabase) {
-      reset();
-      Deserializer.deserialize(projectDir, this, battleAI, itemDatabase, moveDatabase, speciesDatabase,
-                               trainerClassDatabase, trainerPicDatabase);
-      IsDirty = false;
-    }
+    protected override void serialize(ProjectSerializer serializer)
+      => Serializer.serialize(serializer, this);
 
     class Deserializer {
-      class TrainerStruct : CParser.Struct {
-        public Trainer currentTrainer;
-        public BattleAIDatabase battleAI;
-        public ItemDatabase itemDatabase;
-        public TrainerClassDatabase trainerClassDatabase;
-        public TrainerPicDatabase trainerPicDatabase;
-        public Dictionary<string, TrainerParty> cppToParty;
-
-        public TrainerStruct() {
-          addEnum("trainerClass", (tclass) => currentTrainer.Class = trainerClassDatabase.getClassFromId(tclass.Remove(0, "TRAINER_CLASS_".Length)));
+      class TrainerDeserializer : StructDeserializer<Trainer> {
+        public TrainerDeserializer(Dictionary<string, TrainerParty> cppToParty, Action<string, Trainer> handler) : base(handler) {
+          addEnum("trainerClass", (tclass) => current.Class = Project.Instance.TrainerClasses.getFromId(tclass.Remove(0, "TRAINER_CLASS_".Length)));
           addEnumMask("encounterMusic_gender", (flags) => {
-            currentTrainer.IsMale = flags.Length == 1;
-            currentTrainer.EncounterMusic = flags[^1].Remove(0, "TRAINER_ENCOUNTER_MUSIC_".Length);
+            current.IsMale = flags.Length == 1;
+            current.EncounterMusic = Project.Instance.TrainerEncounterMusic.getFromId(flags[^1]);
           });
-          addEnum("trainerPic", (pic) => currentTrainer.Pic = trainerPicDatabase.getFromID(pic.Remove(0, "TRAINER_PIC_".Length)));
-          addString("trainerName", (name) => currentTrainer.Name = name);
+          addEnum("trainerPic", (pic) => current.Pic = Project.Instance.TrainerPics.getFromID(pic.Remove(0, "TRAINER_PIC_".Length)));
+          addString("trainerName", (name) => current.Name = name);
           addEnumList("items", (items) => {
             if (items.Length == 0)
-              currentTrainer.Items = new ObservableCollection<Item>(Enumerable.Repeat(itemDatabase.getFromId("ITEM_NONE"), 4));
+              current.Items = new ObservableCollection<Item>(Enumerable.Repeat(Project.Instance.Items.getFromId("ITEM_NONE"), 4));
             else
-              currentTrainer.Items = new ObservableCollection<Item>(items.Select(item => itemDatabase.getFromId(item)));
+              current.Items = new ObservableCollection<Item>(items.Select(item => Project.Instance.Items.getFromId(item)));
           });
-          addEnum("doubleBattle", (doubleBattle) => currentTrainer.DoubleBattle = doubleBattle[0] != 'F');
+          addEnum("doubleBattle", (doubleBattle) => current.DoubleBattle = doubleBattle[0] != 'F');
           addEnumMask("aiFlags", (flags) => {
             if (flags[0][0] != '0') {
               foreach (string flag in flags)
-                currentTrainer.AiFlags.Add(battleAI.getNameFromEnum(flag));
+                current.AiFlags.Add(Project.Instance.BattleAI.getFromId(flag));
             }
           });
           addEnum("party", (partyStruct) => {
             int partyNameIndex = partyStruct.LastIndexOf(' ') + 1;
             string partyName = partyStruct.Substring(partyNameIndex, partyStruct.Length - partyNameIndex - 1);
-            if (!cppToParty.TryGetValue(partyName, out TrainerParty party))
-              throw new Exception("unknown trainer party");
-            currentTrainer.Party = party;
+            if (cppToParty.TryGetValue(partyName, out TrainerParty party))
+              current.Party = party;
           });
         }
       }
-      static readonly TrainerStruct trainerSerializer = new TrainerStruct();
-
-      public static void deserialize(string projectDir, TrainerDatabase database, BattleAIDatabase battleAI,
-                                     ItemDatabase itemDatabase, MoveDatabase moveDatabase,
-                                     PokemonSpeciesDatabase speciesDatabase,
-                                     TrainerClassDatabase trainerClassDatabase,
-                                     TrainerPicDatabase trainerPicDatabase) {
+      public static void deserialize(ProjectDeserializer deserializer, TrainerDatabase database) {
         var cppToParty = new Dictionary<string, TrainerParty>();
-        loadTrainerParties(projectDir, itemDatabase, moveDatabase, speciesDatabase, cppToParty);
-        loadTrainers(projectDir, database, cppToParty, battleAI, itemDatabase, trainerClassDatabase,
-                     trainerPicDatabase);
+        loadTrainerParties(deserializer, cppToParty);
+        loadTrainers(deserializer, database, cppToParty);
       }
-
-      static void loadTrainerParties(string projectDir, ItemDatabase itemDatabase,
-                                     MoveDatabase moveDatabase, PokemonSpeciesDatabase speciesDatabase,
-                                     Dictionary<string, TrainerParty> cppToParty) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "trainer_parties.h"));
-        while (!reader.EndOfStream) {
-          TrainerParty party = TrainerParty.Deserializer.deserialize(
-              reader, itemDatabase, moveDatabase, speciesDatabase);
-          cppToParty[party.CppVariable] = party;
-        }
-        reader.Close();
+      static void loadTrainerParties(ProjectDeserializer deserializer, Dictionary<string, TrainerParty> cppToParty) {
+        var partyDeserializer = new TrainerParty.Deserializer(cppToParty);
+        deserializer.deserializeFile(partyDeserializer, "src", "data", "trainer_parties.h");
       }
-
-      static void loadTrainers(string projectDir, TrainerDatabase database, Dictionary<string, TrainerParty> cppToParty,
-                               BattleAIDatabase battleAI, ItemDatabase itemDatabase,
-                               TrainerClassDatabase trainerClassDatabase,
-                               TrainerPicDatabase trainerPicDatabase) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "trainers.h"));
-        reader.ReadLine();
-
-        // Skip the first trainer as it is TRAINER_NONE.
-        while (!reader.EndOfStream && reader.ReadLine() != "")
-          continue;
-        while (!reader.EndOfStream) {
-          if (reader.Peek() == '}')
-            break;
-          string defLine = reader.ReadLine();
-          int skipLen = "    [TRAINER_".Length;
-
-          var trainer = new Trainer {
-            Identifier = defLine.Substring(skipLen, defLine.Length - skipLen - 3)
-          };
-          reader.ReadLine();
-
-          trainerSerializer.cppToParty = cppToParty;
-          trainerSerializer.battleAI = battleAI;
-          trainerSerializer.itemDatabase = itemDatabase;
-          trainerSerializer.trainerClassDatabase = trainerClassDatabase;
-          trainerSerializer.trainerPicDatabase = trainerPicDatabase;
-          trainerSerializer.currentTrainer = trainer;
-          trainerSerializer.deserialize(reader);
-          database.Trainers.Add(trainer);
-          reader.ReadLine();
-        }
-        reader.Close();
+      static void loadTrainers(ProjectDeserializer deserializer, TrainerDatabase database,
+                               Dictionary<string, TrainerParty> cppToParty) {
+        var trainerDeserializer = new TrainerDeserializer(cppToParty, (name, trainer) => {
+          trainer.Identifier = name.Remove(0, "TRAINER_".Length);
+          if (trainer.Identifier != "NONE")
+            database.Trainers.Add(trainer);
+        });
+        var trainerListDeserialzier = new ArrayDeserializer(trainerDeserializer, "gTrainers");
+        deserializer.deserializeFile(trainerListDeserialzier, "src", "data", "trainers.h");
       }
-
     }
 
     class Serializer {
-      public static void serialize(string projectDir, TrainerDatabase database, BattleAIDatabase battleAI) {
-        saveTrainerParties(projectDir, database);
-        saveTrainers(projectDir, database, battleAI);
+      public static void serialize(ProjectSerializer serializer, TrainerDatabase database) {
+        saveTrainerParties(serializer, database);
+        saveTrainers(serializer, database);
       }
-      static void saveTrainerParties(string projectDir, TrainerDatabase database) {
-        var stream = new StreamWriter(Path.Combine(projectDir, "src", "data", "trainer_parties.h"), false);
-        foreach (Trainer trainer in database.Trainers)
-          TrainerParty.Serializer.serialize(trainer.Party, stream);
-        stream.Close();
+      static void saveTrainerParties(ProjectSerializer serializer, TrainerDatabase database) {
+        serializer.serializeFile((stream) => {
+          foreach (Trainer trainer in database.Trainers)
+            TrainerParty.Serializer.serialize(trainer.Party, stream);
+        }, "src", "data", "trainer_parties.h");
       }
-      static void saveTrainers(string projectDir, TrainerDatabase database, BattleAIDatabase battleAI) {
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "data", "trainers.h"), false);
-        writer.WriteLine("const struct Trainer gTrainers[] = {");
-        writer.WriteLine(
-@"    [TRAINER_NONE] =
+      static void saveTrainers(ProjectSerializer serializer, TrainerDatabase database) {
+        serializer.serializeFile((stream) => {
+          stream.WriteLine("const struct Trainer gTrainers[] = {");
+          stream.WriteLine(
+  @"    [TRAINER_NONE] =
     {
         .partyFlags = 0,
         .trainerClass = TRAINER_CLASS_PKMN_TRAINER_1,
@@ -217,14 +150,13 @@ namespace DecompEditor {
         .party = {.NoItemDefaultMoves = NULL},
     },
 ");
-        foreach (Trainer trainer in database.Trainers)
-          saveTrainer(writer, trainer, battleAI);
-
-        writer.WriteLine("};\n");
-        writer.Close();
+          foreach (Trainer trainer in database.Trainers)
+            saveTrainer(stream, trainer);
+          stream.WriteLine("};\n");
+        }, "src", "data", "trainers.h");
       }
 
-      static void saveTrainer(StreamWriter stream, Trainer trainer, BattleAIDatabase battleAI) {
+      static void saveTrainer(StreamWriter stream, Trainer trainer) {
         stream.WriteLine("    [TRAINER_" + trainer.Identifier + "] =");
         stream.WriteLine("    {");
         stream.Write("        .partyFlags = ");
@@ -245,7 +177,7 @@ namespace DecompEditor {
         stream.Write("        .encounterMusic_gender = ");
         if (!trainer.IsMale)
           stream.Write("F_TRAINER_FEMALE | ");
-        stream.WriteLine("TRAINER_ENCOUNTER_MUSIC_" + trainer.EncounterMusic + ",");
+        stream.WriteLine("TRAINER_ENCOUNTER_MUSIC_" + trainer.EncounterMusic.Identifier + ",");
         stream.WriteLine("        .trainerPic = TRAINER_PIC_" + trainer.Pic.Identifier + ",");
         stream.WriteLine("        .trainerName = _(\"" + trainer.Name + "\"),");
 
@@ -256,7 +188,7 @@ namespace DecompEditor {
         if (trainer.AiFlags.Count == 0)
           stream.WriteLine("0,");
         else
-          stream.WriteLine(string.Join(" | ", battleAI.getEnumsFromNames(trainer.AiFlags)) + ",");
+          stream.WriteLine(string.Join(" | ", trainer.AiFlags.OrderBy(flag => flag.Order)) + ",");
         stream.WriteLine("        .partySize = ARRAY_COUNT(" + trainer.Party.CppVariable + "),");
         stream.Write("        .party = {.");
         if (partyHasItems) {

@@ -1,6 +1,5 @@
 ﻿using DecompEditor.Utils;
 using DecompEditor.Views;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 

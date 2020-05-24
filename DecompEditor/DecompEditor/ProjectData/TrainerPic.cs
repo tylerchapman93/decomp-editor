@@ -1,7 +1,7 @@
-﻿using DecompEditor.Utils;
+﻿using DecompEditor.ParserUtils;
+using DecompEditor.Utils;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Media;
 using Truncon.Collections;
@@ -40,7 +40,7 @@ namespace DecompEditor {
     public int CoordYOffset { get => coordYOffset; set => Set(ref coordYOffset, value); }
     public int UncompressedSize { get => uncompressedSize; set => Set(ref uncompressedSize, value); }
   }
-  public class TrainerPicDatabase : ObservableObject {
+  public class TrainerPicDatabase : DatabaseBase {
     readonly OrderedDictionary<string, TrainerPic> idToPic = new OrderedDictionary<string, TrainerPic>();
     private ObservableCollection<TrainerPic> frontPics;
 
@@ -48,24 +48,13 @@ namespace DecompEditor {
       get => frontPics;
       set => SetAndTrackItemUpdates(ref frontPics, value, this);
     }
-    public bool IsDirty {
-      get;
-      private set;
-    }
 
-    public TrainerPicDatabase() {
-      FrontPics = new ObservableCollection<TrainerPic>();
-      PropertyChanged += (sender, e) => IsDirty = true;
-    }
+    public TrainerPicDatabase() => FrontPics = new ObservableCollection<TrainerPic>();
 
     /// Only used during serialization.
     internal TrainerPic getFromID(string id) {
-      if (!idToPic.TryGetValue(id, out TrainerPic pic)) {
-        idToPic.Add(id, pic = new TrainerPic() {
-          Identifier = id
-        });
-        FrontPics.Add(pic);
-      }
+      if (!idToPic.TryGetValue(id, out TrainerPic pic))
+        addFrontPic(pic = new TrainerPic() { Identifier = id });
       return pic;
     }
     public void addFrontPic(TrainerPic newPic) {
@@ -73,134 +62,94 @@ namespace DecompEditor {
       FrontPics.Add(newPic);
     }
 
-    public void reset() {
+    protected override void reset() {
       idToPic.Clear();
       FrontPics.Clear();
-      IsDirty = false;
     }
 
-    public void load(string projectDir) {
-      reset();
+    protected override void deserialize(ProjectDeserializer deserializer)
+      => Deserializer.deserialize(deserializer, this);
 
-      Deserializer.deserialize(projectDir, this);
-      IsDirty = false;
-    }
-    public void save(string projectDir) {
-      if (IsDirty) {
-        Serializer.serialize(projectDir, this);
-        IsDirty = false;
-      }
-    }
+    protected override void serialize(ProjectSerializer serializer)
+      => Serializer.serialize(serializer, this);
 
     class Deserializer {
-      public static void deserialize(string projectDir, TrainerPicDatabase database) {
-        loadPicAndPalettePath(projectDir, database);
-        loadPicTables(projectDir, database);
+      public static void deserialize(ProjectDeserializer deserializer, TrainerPicDatabase database) {
+        loadPicAndPalettePath(deserializer, database);
+        loadPicTables(deserializer, database);
       }
-      static void loadPicAndPalettePath(string projectDir, TrainerPicDatabase database) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "graphics", "trainers.h"));
-
-        string classEnum;
-        TrainerPic trainerPic;
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
-          if (line.StartsWith("const u32 gTrainerFrontPic_")) {
-            int skipLen = "const u32 gTrainerFrontPic_".Length;
-            classEnum = line.Substring(skipLen, line.IndexOf('[') - skipLen).fromPascalToSnake();
-            if (!database.idToPic.TryGetValue(classEnum, out trainerPic)) {
-              trainerPic = new TrainerPic {
-                Identifier = classEnum
-              };
-              database.idToPic.Add(classEnum, trainerPic);
-              database.FrontPics.Add(trainerPic);
-            }
-
-            skipLen = line.IndexOf('\"') + 1;
-            string path = line.Substring(skipLen, line.IndexOf('.', skipLen) - skipLen);
-            trainerPic.Path = path.Remove(0, "graphics/trainers/front_pics/".Length);
-            trainerPic.FullPath = Path.Combine(projectDir, path + ".png");
-            continue;
-          }
-
-          if (line.StartsWith("const u32 gTrainerPalette_")) {
-            int skipLen = "const u32 gTrainerPalette_".Length;
-            classEnum = line.Substring(skipLen, line.IndexOf('[') - skipLen).fromPascalToSnake();
-            if (!database.idToPic.TryGetValue(classEnum, out trainerPic)) {
-              trainerPic = new TrainerPic {
-                Identifier = classEnum
-              };
-              database.idToPic.Add(classEnum, trainerPic);
-              database.FrontPics.Add(trainerPic);
-            }
-
-            skipLen = line.IndexOf('\"') + 1;
-            trainerPic.PalettePath = line.Substring(skipLen, line.IndexOf('.', skipLen) - skipLen)
-                                         .Remove(0, "graphics/trainers/palettes/".Length);
-            continue;
-          }
-        }
+      static void loadPicAndPalettePath(ProjectDeserializer deserializer, TrainerPicDatabase database) {
+        var fileDeserializer = new FileDeserializer();
+        fileDeserializer.add(new IncBinDeserializer("gTrainerFrontPic_", "u32", (cppVar, fileName) => {
+          cppVar = cppVar.fromPascalToSnake();
+          if (!database.idToPic.TryGetValue(cppVar, out TrainerPic trainerPic))
+            database.addFrontPic(trainerPic = new TrainerPic { Identifier = cppVar });
+          trainerPic.Path = fileName.Remove(0, "graphics/trainers/front_pics/".Length);
+          trainerPic.FullPath = Path.Combine(deserializer.project.ProjectDir, fileName + ".png");
+        }));
+        fileDeserializer.add(new IncBinDeserializer("gTrainerPalette_", "u32", (cppVar, fileName) => {
+          cppVar = cppVar.fromPascalToSnake();
+          if (!database.idToPic.TryGetValue(cppVar, out TrainerPic trainerPic))
+            database.addFrontPic(trainerPic = new TrainerPic { Identifier = cppVar });
+          trainerPic.PalettePath = Path.ChangeExtension(fileName, null).Remove(0, "graphics/trainers/palettes/".Length);
+        }));
+        deserializer.deserializeFile(fileDeserializer, "src", "data", "graphics", "trainers.h");
       }
-      static void loadPicTables(string projectDir, TrainerPicDatabase database) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "trainer_graphics", "front_pic_tables.h"));
-        reader.ReadLine();
-
-        TrainerPic trainerPic;
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine();
+      static void loadPicTables(ProjectDeserializer deserializer, TrainerPicDatabase database) {
+        deserializer.deserializeFile((stream) => {
+          string line = stream.ReadLine();
           if (line.tryExtractPrefix("    TRAINER_SPRITE(", ",", out string classEnum)) {
-            if (!database.idToPic.TryGetValue(classEnum, out trainerPic))
-              continue;
+            if (!database.idToPic.TryGetValue(classEnum, out TrainerPic existingPic))
+              return;
             int sizeIndex = line.LastIndexOf(' ') + 1;
-            trainerPic.UncompressedSize = Convert.ToInt32(line.Substring(sizeIndex, line.Length - sizeIndex - 2), 16);
-            continue;
+            existingPic.UncompressedSize = Convert.ToInt32(line.Substring(sizeIndex, line.Length - sizeIndex - 2), 16);
+            return;
           }
-
-          if (!line.tryExtractPrefix("    [TRAINER_PIC_", "]", out classEnum))
-            continue;
-          if (!database.idToPic.TryGetValue(classEnum, out trainerPic))
-            continue;
+          if (!line.tryExtractPrefix("    [TRAINER_PIC_", "]", out classEnum) ||
+              !database.idToPic.TryGetValue(classEnum, out TrainerPic trainerPic)) {
+            return;
+          }
 
           int structStartIndex = line.LastIndexOf('{') + ".size = ".Length + 1;
           int structSplitIndex = line.IndexOf(',', structStartIndex);
           trainerPic.CoordSize = int.Parse(line.Substring(structStartIndex, structSplitIndex - structStartIndex));
           structSplitIndex += ", .y_offset = ".Length;
           trainerPic.CoordYOffset = int.Parse(line.Substring(structSplitIndex, line.Length - structSplitIndex - 2));
-        }
+        }, "src", "data", "trainer_graphics", "front_pic_tables.h");
       }
     }
 
     class Serializer {
-      public static void serialize(string projectDir, TrainerPicDatabase database) {
-        savePicAndPalettePath(projectDir, database);
-        savePicAndPalettePathExterns(projectDir, database);
-        savePicTables(projectDir, database);
-        saveAnimTables(projectDir, database);
-        savePicIDs(projectDir, database);
+      public static void serialize(ProjectSerializer serializer, TrainerPicDatabase database) {
+        savePicAndPalettePath(serializer, database);
+        savePicAndPalettePathExterns(serializer, database);
+        savePicTables(serializer, database);
+        saveAnimTables(serializer, database);
+        savePicIDs(serializer, database);
       }
-      static void savePicAndPalettePath(string projectDir, TrainerPicDatabase database) {
+      static void savePicAndPalettePath(ProjectSerializer serializer, TrainerPicDatabase database) {
+        string projectDir = serializer.project.ProjectDir;
         string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "src", "data", "graphics", "trainers.h"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "data", "graphics", "trainers.h"), false);
-
-        // Copy all of the current lines not related to front pics.
-        // TODO: This wouldn't be necessary if we also handled back sprites.
-        foreach (string line in curLines) {
-          if (line.Length != 0 && !line.StartsWith("const u32 gTrainerFrontPic_") &&
-              !line.StartsWith("const u32 gTrainerPalette_")) {
-            writer.WriteLine(line);
+        serializer.serializeFile(stream => {
+          // Copy all of the current lines not related to front pics.
+          // TODO: This wouldn't be necessary if we also handled back sprites.
+          foreach (string line in curLines) {
+            if (line.Length != 0 && !line.StartsWith("const u32 gTrainerFrontPic_") &&
+                !line.StartsWith("const u32 gTrainerPalette_")) {
+              stream.WriteLine(line);
+            }
           }
-        }
-        writer.WriteLine();
+          stream.WriteLine();
 
-        string picFormat = "const u32 gTrainerFrontPic_{0}[] = INCBIN_U32(\"graphics/trainers/front_pics/{1}.4bpp.lz\");";
-        string palFormat = "const u32 gTrainerPalette_{0}[] = INCBIN_U32(\"graphics/trainers/palettes/{1}.gbapal.lz\");";
-        foreach (TrainerPic pic in database.FrontPics) {
-          string cppVar = pic.Identifier.fromSnakeToPascal();
-          writer.WriteLine(string.Format(picFormat, cppVar, pic.Path));
-          writer.WriteLine(string.Format(palFormat, cppVar, pic.PalettePath));
-          writer.WriteLine();
-        }
-
-        writer.Close();
+          string picFormat = "const u32 gTrainerFrontPic_{0}[] = INCBIN_U32(\"graphics/trainers/front_pics/{1}.4bpp.lz\");";
+          string palFormat = "const u32 gTrainerPalette_{0}[] = INCBIN_U32(\"graphics/trainers/palettes/{1}.gbapal.lz\");";
+          foreach (TrainerPic pic in database.FrontPics) {
+            string cppVar = pic.Identifier.fromSnakeToPascal();
+            stream.WriteLine(string.Format(picFormat, cppVar, pic.Path));
+            stream.WriteLine(string.Format(palFormat, cppVar, pic.PalettePath));
+            stream.WriteLine();
+          }
+        }, "src", "data", "graphics", "trainers.h");
 
         // Check to see if any of the pics changed location.
         foreach (TrainerPic pic in database.FrontPics) {
@@ -229,100 +178,77 @@ namespace DecompEditor {
           File.Delete(Path.ChangeExtension(normalizePalPath, ".gbapal.lz"));
         }
       }
-      static void savePicAndPalettePathExterns(string projectDir, TrainerPicDatabase database) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "include", "graphics.h"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "include", "graphics.h"), false);
-
-        // Copy the existing non trainer pic ID lines.
-        int curLine = 0;
-        while (!curLines[curLine].StartsWith("extern const u32 gTrainerFrontPic_"))
-          writer.WriteLine(curLines[curLine++]);
-        while (curLines[++curLine].StartsWith("extern const u32 gTrainerFrontPic_"))
-          continue;
-        foreach (TrainerPic pic in database.FrontPics)
-          writer.WriteLine("extern const u32 gTrainerFrontPic_" + pic.Identifier.fromSnakeToPascal() + "[];");
-
-        while (!curLines[curLine].StartsWith("extern const u32 gTrainerPalette_"))
-          writer.WriteLine(curLines[curLine++]);
-        while (curLines[++curLine].StartsWith("extern const u32 gTrainerPalette_"))
-          continue;
-
-        foreach (TrainerPic pic in database.FrontPics)
-          writer.WriteLine("extern const u32 gTrainerPalette_" + pic.Identifier.fromSnakeToPascal() + "[];");
-
-        while (curLine != curLines.Length)
-          writer.WriteLine(curLines[curLine++]);
-        writer.Close();
+      static void savePicAndPalettePathExterns(ProjectSerializer serializer, TrainerPicDatabase database) {
+        Func<string, bool> trainerPicCheck = str => str.StartsWith("extern const u32 gTrainerFrontPic_");
+        Action<StreamWriter> trainerPicAction = stream => {
+          foreach (TrainerPic pic in database.FrontPics)
+            stream.WriteLine("extern const u32 gTrainerFrontPic_" + pic.Identifier.fromSnakeToPascal() + "[];");
+        };
+        Func<string, bool> trainerPalCheck = str => str.StartsWith("extern const u32 gTrainerPalette_");
+        Action<StreamWriter> trainerPalAction = stream => {
+          foreach (TrainerPic pic in database.FrontPics)
+            stream.WriteLine("extern const u32 gTrainerPalette_" + pic.Identifier.fromSnakeToPascal() + "[];");
+        };
+        serializer.serializePartialFile(new[] { trainerPicCheck, trainerPalCheck },
+                                        new[] { trainerPicAction, trainerPalAction },
+                                        "include", "graphics.h");
       }
-      static void savePicTables(string projectDir, TrainerPicDatabase database) {
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "data", "trainer_graphics", "front_pic_tables.h"), false);
-        writer.WriteLine("const struct MonCoords gTrainerFrontPicCoords[] =");
-        writer.WriteLine("{");
-        foreach (TrainerPic pic in database.FrontPics) {
-          writer.WriteLine("    [TRAINER_PIC_" + pic.Identifier + "] = {.size = " +
-                           pic.CoordSize + ", .y_offset = " + pic.CoordYOffset + "},");
-        }
-        writer.WriteLine("};\n");
+      static void savePicTables(ProjectSerializer serializer, TrainerPicDatabase database) {
+        serializer.serializeFile(stream => {
+          stream.WriteLine("const struct MonCoords gTrainerFrontPicCoords[] =");
+          stream.WriteLine("{");
+          foreach (TrainerPic pic in database.FrontPics) {
+            stream.WriteLine("    [TRAINER_PIC_" + pic.Identifier + "] = {.size = " +
+                             pic.CoordSize + ", .y_offset = " + pic.CoordYOffset + "},");
+          }
+          stream.WriteLine("};\n");
 
-        writer.WriteLine("const struct CompressedSpriteSheet gTrainerFrontPicTable[] =");
-        writer.WriteLine("{");
-        foreach (TrainerPic pic in database.FrontPics) {
-          writer.WriteLine("    TRAINER_SPRITE(" + pic.Identifier +
-                           ", gTrainerFrontPic_" + pic.Identifier.fromSnakeToPascal() +
-                           ", 0x" + string.Format("{0:X}", pic.UncompressedSize) + "),");
-        }
-        writer.WriteLine("};\n");
+          stream.WriteLine("const struct CompressedSpriteSheet gTrainerFrontPicTable[] =");
+          stream.WriteLine("{");
+          foreach (TrainerPic pic in database.FrontPics) {
+            stream.WriteLine("    TRAINER_SPRITE(" + pic.Identifier +
+                             ", gTrainerFrontPic_" + pic.Identifier.fromSnakeToPascal() +
+                             ", 0x" + string.Format("{0:X}", pic.UncompressedSize) + "),");
+          }
+          stream.WriteLine("};\n");
 
-        writer.WriteLine("const struct CompressedSpritePalette gTrainerFrontPicPaletteTable[] =");
-        writer.WriteLine("{");
-        foreach (TrainerPic pic in database.FrontPics) {
-          writer.WriteLine("    TRAINER_PAL(" + pic.Identifier + ", gTrainerPalette_" +
-                           pic.Identifier.fromSnakeToPascal() + "),");
-        }
-        writer.WriteLine("};\n");
-        writer.Close();
+          stream.WriteLine("const struct CompressedSpritePalette gTrainerFrontPicPaletteTable[] =");
+          stream.WriteLine("{");
+          foreach (TrainerPic pic in database.FrontPics) {
+            stream.WriteLine("    TRAINER_PAL(" + pic.Identifier + ", gTrainerPalette_" +
+                             pic.Identifier.fromSnakeToPascal() + "),");
+          }
+          stream.WriteLine("};\n");
+        }, "src", "data", "trainer_graphics", "front_pic_tables.h");
       }
-      static void saveAnimTables(string projectDir, TrainerPicDatabase database) {
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "data", "trainer_graphics", "front_pic_anims.h"), false);
+      static void saveAnimTables(ProjectSerializer serializer, TrainerPicDatabase database) {
+        serializer.serializeFile(stream => {
+          foreach (TrainerPic pic in database.FrontPics) {
+            stream.WriteLine("static const union AnimCmd *const sAnims_" +
+                             pic.Identifier.fromSnakeToPascal() + "[] ={");
+            stream.WriteLine("    sAnim_GeneralFrame0,");
+            stream.WriteLine("};\n");
+          }
 
-        foreach (TrainerPic pic in database.FrontPics) {
-          writer.WriteLine("static const union AnimCmd *const sAnims_" +
-                           pic.Identifier.fromSnakeToPascal() + "[] ={");
-          writer.WriteLine("    sAnim_GeneralFrame0,");
-          writer.WriteLine("};\n");
-        }
-
-        writer.WriteLine("const union AnimCmd *const *const gTrainerFrontAnimsPtrTable[] =");
-        writer.WriteLine("{");
-        foreach (TrainerPic pic in database.FrontPics) {
-          writer.WriteLine("    [TRAINER_PIC_" + pic.Identifier + "] = sAnims_" +
-                           pic.Identifier.fromSnakeToPascal() + ",");
-        }
-        writer.WriteLine("};\n");
-        writer.Close();
+          stream.WriteLine("const union AnimCmd *const *const gTrainerFrontAnimsPtrTable[] =");
+          stream.WriteLine("{");
+          foreach (TrainerPic pic in database.FrontPics) {
+            stream.WriteLine("    [TRAINER_PIC_" + pic.Identifier + "] = sAnims_" +
+                             pic.Identifier.fromSnakeToPascal() + ",");
+          }
+          stream.WriteLine("};\n");
+        }, "src", "data", "trainer_graphics", "front_pic_anims.h");
       }
-      static void savePicIDs(string projectDir, TrainerPicDatabase database) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "include", "constants", "trainers.h"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "include", "constants", "trainers.h"), false);
+      static void savePicIDs(ProjectSerializer serializer, TrainerPicDatabase database) {
+        serializer.serializePartialFile(str => str.StartsWith("#define TRAINER_PIC_"), stream => {
+          int longestPicID = 0;
+          foreach (TrainerPic pic in database.FrontPics)
+            longestPicID = Math.Max(longestPicID, pic.Identifier.Length);
 
-        // Copy the existing non trainer pic ID lines.
-        int curLine = 0;
-        while (!curLines[curLine].StartsWith("#define TRAINER_PIC_"))
-          writer.WriteLine(curLines[curLine++]);
-        while (curLines[++curLine].StartsWith("#define TRAINER_PIC_"))
-          continue;
-
-        int longestPicID = 0;
-        foreach (TrainerPic pic in database.FrontPics)
-          longestPicID = Math.Max(longestPicID, pic.Identifier.Length);
-
-        int picCount = 0;
-        foreach (TrainerPic pic in database.FrontPics)
-          writer.WriteLine("#define TRAINER_PIC_" + pic.Identifier.PadRight(longestPicID + 1) + picCount++);
-
-        while (curLine != curLines.Length)
-          writer.WriteLine(curLines[curLine++]);
-        writer.Close();
+          int picCount = 0;
+          foreach (TrainerPic pic in database.FrontPics)
+            stream.WriteLine("#define TRAINER_PIC_" + pic.Identifier.PadRight(longestPicID + 1) + picCount++);
+        }, "include", "constants", "trainers.h");
       }
     }
   }

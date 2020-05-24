@@ -1,23 +1,19 @@
-﻿using DecompEditor.Utils;
+﻿using DecompEditor.ParserUtils;
 using System.Collections.Generic;
-using System.IO;
+using Truncon.Collections;
 
 namespace DecompEditor {
-  class TrainerEncounterMusicDatabase {
-    readonly List<string> encounterMusic = new List<string>();
+  class TrainerEncounterMusicDatabase : DatabaseBase {
+    OrderedDictionary<string, CDefine> encounterMusic = new OrderedDictionary<string, CDefine>();
 
-    public IEnumerable<string> EncounterMusic => encounterMusic;
+    public IEnumerable<CDefine> EncounterMusic => encounterMusic.Values;
+    public CDefine getFromId(string id) => encounterMusic[id];
 
-    public void reset() => encounterMusic.Clear();
+    protected override void reset() => encounterMusic.Clear();
 
-    public void load(string projectDir) {
-      reset();
-
-      StreamReader reader = File.OpenText(Path.Combine(projectDir, "include", "constants", "trainers.h"));
-      while (!reader.EndOfStream) {
-        if (reader.ReadLine().tryExtractPrefix("#define TRAINER_ENCOUNTER_MUSIC_", " ", out string musicName))
-          encounterMusic.Add(musicName);
-      }
+    protected override void deserialize(ProjectDeserializer serializer) {
+      encounterMusic = serializer.parseDefineNames(
+        "TRAINER_ENCOUNTER_MUSIC_", "include", "constants", "trainers.h");
     }
   }
 }

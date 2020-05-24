@@ -1,8 +1,7 @@
-﻿using DecompEditor.Utils;
+﻿using DecompEditor.ParserUtils;
+using DecompEditor.Utils;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
 
 namespace DecompEditor {
   public class TrainerClass : ObservableObject {
@@ -24,151 +23,101 @@ namespace DecompEditor {
     public int MoneyFactor { get => moneyFactor; set => Set(ref moneyFactor, value); }
   }
 
-  public class TrainerClassDatabase : ObservableObject {
+  public class TrainerClassDatabase : DatabaseBase {
     readonly Dictionary<string, TrainerClass> idToTrainerClass = new Dictionary<string, TrainerClass>();
     private ObservableCollection<TrainerClass> classes;
 
     // TODO: These could be configurable.
     public int MaxClassCount => 255;
     public int MaxClassNameLen => 13;
-    public bool IsDirty { get; private set; }
 
     public ObservableCollection<TrainerClass> Classes {
       get => classes;
       private set => SetAndTrackItemUpdates(ref classes, value, this);
     }
-    public TrainerClassDatabase() {
-      Classes = new ObservableCollection<TrainerClass>();
-      PropertyChanged += (sender, e) => IsDirty = true;
-    }
+    public TrainerClassDatabase() => Classes = new ObservableCollection<TrainerClass>();
 
-    public void reset() {
+    protected override void reset() {
       Classes.Clear();
       idToTrainerClass.Clear();
-      IsDirty = false;
     }
 
     /// Only used during serialization.
-    internal TrainerClass getClassFromId(string id) => idToTrainerClass[id];
+    internal TrainerClass getFromId(string id) => idToTrainerClass[id];
     public void addClass(TrainerClass newClass) {
       idToTrainerClass.Add(newClass.Identifier, newClass);
       Classes.Add(newClass);
     }
 
-    public void load(string projectDir) {
-      reset();
-      Deserializer.deserialize(projectDir, this);
-      IsDirty = false;
-    }
-    public void save(string projectDir) {
-      if (IsDirty) {
-        Serializer.serialize(projectDir, this);
-        IsDirty = false;
-      }
-    }
+    protected override void deserialize(ProjectDeserializer deserializer) => Deserializer.deserialize(deserializer, this);
+    protected override void serialize(ProjectSerializer serializer) => Serializer.serialize(serializer, this);
 
     class Deserializer {
-      public static void deserialize(string projectDir, TrainerClassDatabase database) {
-        loadClassNames(projectDir, database);
-        loadMoneyFactors(projectDir, database);
+      public static void deserialize(ProjectDeserializer deserializer, TrainerClassDatabase database) {
+        loadClassNames(deserializer, database);
+        loadMoneyFactors(deserializer, database);
       }
 
-      static void loadClassNames(string projectDir, TrainerClassDatabase database) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "data", "text", "trainer_class_names.h"));
-        reader.ReadLine();
-
-        while (!reader.EndOfStream) {
-          if (CParser.Element.tryDeserializeBracketString(reader.ReadLine(), out string classEnum, out string className)) {
-            var tClass = new TrainerClass() {
-              Identifier = classEnum.Remove(0, "TRAINER_CLASS_".Length),
-              Name = className
-            };
-            database.addClass(tClass);
-          }
-        }
+      static void loadClassNames(ProjectDeserializer deserializer, TrainerClassDatabase database) {
+        deserializer.deserializeFile((reader) => {
+          if (!ParserUtils.StructBodyDeserializer.Element.tryDeserializeBracketString(reader.ReadLine(), out string classEnum, out string className))
+            return;
+          database.addClass(new TrainerClass() {
+            Identifier = classEnum.Remove(0, "TRAINER_CLASS_".Length),
+            Name = className
+          });
+        }, "src", "data", "text", "trainer_class_names.h");
       }
-      static void loadMoneyFactors(string projectDir, TrainerClassDatabase database) {
-        StreamReader reader = File.OpenText(Path.Combine(projectDir, "src", "battle_main.c"));
-
-        while (!reader.EndOfStream && !reader.ReadLine().EndsWith("gTrainerMoneyTable[] ="))
-          continue;
-        reader.ReadLine();
-
-        while (!reader.EndOfStream) {
-          string line = reader.ReadLine().Trim();
-          if (!line.StartsWith("{TRAINER_CLASS"))
-            break;
-          int skipLen = "{TRAINER_CLASS_".Length;
-          line = line.Substring(skipLen, line.Length - skipLen - "},".Length);
-          string[] elements = line.Split(", ");
-          if (database.idToTrainerClass.TryGetValue(elements[0], out TrainerClass tClass))
+      static void loadMoneyFactors(ProjectDeserializer deserializer, TrainerClassDatabase database) {
+        var moneyFactorDeserializer = new InlineStructDeserializer((elements) => {
+          if (elements[0] == "0xFF")
+            return;
+          string id = elements[0].Remove(0, "TRAINER_CLASS_".Length);
+          if (database.idToTrainerClass.TryGetValue(id, out TrainerClass tClass))
             tClass.MoneyFactor = int.Parse(elements[1]);
-        }
-        reader.Close();
+        });
+        var arrayDeserializer = new ArrayDeserializer(moneyFactorDeserializer, "gTrainerMoneyTable");
+        deserializer.deserializeFile(arrayDeserializer, "src", "battle_main.c");
       }
     }
     class Serializer {
-      public static void serialize(string projectDir, TrainerClassDatabase database) {
-        saveClassIDs(projectDir, database);
-        saveClassNames(projectDir, database);
-        saveMoneyFactors(projectDir, database);
+      public static void serialize(ProjectSerializer serializer, TrainerClassDatabase database) {
+        saveClassIDs(serializer, database);
+        saveClassNames(serializer, database);
+        saveMoneyFactors(serializer, database);
       }
-      static void saveClassIDs(string projectDir, TrainerClassDatabase database) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "include", "constants", "trainers.h"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "include", "constants", "trainers.h"), false);
+      static void saveClassIDs(ProjectSerializer serializer, TrainerClassDatabase database) {
+        serializer.serializePartialFile(str => str.StartsWith("#define TRAINER_CLASS_"), (stream) => {
+          int longestClassID = 4;
+          foreach (TrainerClass tClass in database.Classes)
+            longestClassID = Math.Max(longestClassID, tClass.Identifier.Length);
 
-        // Copy the existing non trainer class ID lines.
-        int curLine = 0;
-        while (!curLines[curLine].StartsWith("#define TRAINER_CLASS_"))
-          writer.WriteLine(curLines[curLine++]);
-        while (curLines[++curLine].StartsWith("#define TRAINER_CLASS_"))
-          continue;
-
-        int longestClassID = 4;
-        foreach (TrainerClass tClass in database.Classes)
-          longestClassID = Math.Max(longestClassID, tClass.Identifier.Length);
-
-        int classCount = 0;
-        foreach (TrainerClass tClass in database.Classes) {
-          writer.WriteLine(string.Format("#define TRAINER_CLASS_" + "{0}".PadRight(longestClassID) + " 0x{1:X}",
-                                         tClass.Identifier, classCount++));
-        }
-
-        while (curLine != curLines.Length)
-          writer.WriteLine(curLines[curLine++]);
-        writer.Close();
+          int classCount = 0;
+          foreach (TrainerClass tClass in database.Classes) {
+            stream.WriteLine(string.Format("#define TRAINER_CLASS_" + "{0}".PadRight(longestClassID) + " 0x{1:X}",
+                                           tClass.Identifier, classCount++));
+          }
+        }, "include", "constants", "trainers.h");
       }
-      static void saveClassNames(string projectDir, TrainerClassDatabase database) {
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "data", "text", "trainer_class_names.h"), false);
-        writer.WriteLine("const u8 gTrainerClassNames[][13] = {");
-        foreach (TrainerClass tClass in database.Classes)
-          writer.WriteLine(string.Format("    [TRAINER_CLASS_{0}] = _(\"{1}\"),", tClass.Identifier, tClass.Name));
-        writer.WriteLine("};");
-        writer.Close();
+      static void saveClassNames(ProjectSerializer serializer, TrainerClassDatabase database) {
+        serializer.serializeFile((stream) => {
+          stream.WriteLine("const u8 gTrainerClassNames[][13] = {");
+          foreach (TrainerClass tClass in database.Classes)
+            stream.WriteLine(string.Format("    [TRAINER_CLASS_{0}] = _(\"{1}\"),", tClass.Identifier, tClass.Name));
+          stream.WriteLine("};");
+        }, "src", "data", "text", "trainer_class_names.h");
       }
-      static void saveMoneyFactors(string projectDir, TrainerClassDatabase database) {
-        string[] curLines = File.ReadAllLines(Path.Combine(projectDir, "src", "battle_main.c"));
-        var writer = new StreamWriter(Path.Combine(projectDir, "src", "battle_main.c"), false);
+      static void saveMoneyFactors(ProjectSerializer serializer, TrainerClassDatabase database) {
+        serializer.serializePartialFile(str => str.EndsWith("gTrainerMoneyTable[] ="), str => str.StartsWith("}"), (stream) => {
+          stream.WriteLine("const struct TrainerMoney gTrainerMoneyTable[] =");
+          stream.WriteLine("{");
+          foreach (TrainerClass tClass in database.Classes) {
+            if (tClass.MoneyFactor != 0)
+              stream.WriteLine(string.Format("    {0}TRAINER_CLASS_{1}, {2}{3},", "{", tClass.Identifier, tClass.MoneyFactor, "}"));
+          }
 
-        // Copy the existing lines trainer class IDs.
-        int curLine = 0;
-        while (!curLines[curLine].EndsWith("gTrainerMoneyTable[] ="))
-          writer.WriteLine(curLines[curLine++]);
-        while (!curLines[++curLine].StartsWith("}"))
-          continue;
-
-        writer.WriteLine("const struct TrainerMoney gTrainerMoneyTable[] =");
-        writer.WriteLine("{");
-        foreach (TrainerClass tClass in database.Classes) {
-          if (tClass.MoneyFactor != 0)
-            writer.WriteLine(string.Format("    {0}TRAINER_CLASS_{1}, {2}{3},", "{", tClass.Identifier, tClass.MoneyFactor, "}"));
-        }
-
-        writer.WriteLine(string.Format("    {0}0x{1:X}, 5{2},", "{", database.MaxClassCount, "}"));
-
-        while (curLine != curLines.Length)
-          writer.WriteLine(curLines[curLine++]);
-        writer.Close();
+          stream.WriteLine(string.Format("    {0}0x{1:X}, 5{2},", "{", database.MaxClassCount, "}"));
+        }, "src", "battle_main.c");
       }
     }
   }

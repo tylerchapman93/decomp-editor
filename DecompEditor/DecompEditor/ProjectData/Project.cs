@@ -2,26 +2,51 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DecompEditor {
   public class Project {
     readonly Dictionary<string, string> fileReplacements = new Dictionary<string, string>();
+    readonly List<DatabaseBase> databases = new List<DatabaseBase>();
+    private readonly BattleAIDatabase battleAI = new BattleAIDatabase();
+    private readonly EventObjectDatabase eventObjects = new EventObjectDatabase();
+    private readonly ItemDatabase items = new ItemDatabase();
+    private readonly MoveDatabase moves = new MoveDatabase();
+    private readonly PokemonSpeciesDatabase species = new PokemonSpeciesDatabase();
+    private readonly TrainerClassDatabase trainerClasses = new TrainerClassDatabase();
+    private readonly TrainerEncounterMusicDatabase trainerEncounterMusic = new TrainerEncounterMusicDatabase();
+    private readonly TrainerPicDatabase trainerPics = new TrainerPicDatabase();
+    private readonly TrainerDatabase trainers = new TrainerDatabase();
     private string projectDir;
 
-    internal BattleAIDatabase BattleAI { get; } = new BattleAIDatabase();
-    internal EventObjectDatabase EventObjects { get; } = new EventObjectDatabase();
-    internal ItemDatabase Items { get; } = new ItemDatabase();
-    internal MoveDatabase Moves { get; } = new MoveDatabase();
-    internal PokemonSpeciesDatabase Species { get; } = new PokemonSpeciesDatabase();
-    internal TrainerClassDatabase TrainerClasses { get; } = new TrainerClassDatabase();
-    internal TrainerEncounterMusicDatabase TrainerEncounterMusic { get; } = new TrainerEncounterMusicDatabase();
-    internal TrainerDatabase Trainers { get; } = new TrainerDatabase();
-    internal TrainerPicDatabase TrainerPics { get; } = new TrainerPicDatabase();
+    internal BattleAIDatabase BattleAI => getSafe(battleAI);
+    internal EventObjectDatabase EventObjects => getSafe(eventObjects);
+    internal ItemDatabase Items => getSafe(items);
+    internal MoveDatabase Moves => getSafe(moves);
+    internal PokemonSpeciesDatabase Species => getSafe(species);
+    internal TrainerClassDatabase TrainerClasses => getSafe(trainerClasses);
+    internal TrainerEncounterMusicDatabase TrainerEncounterMusic => getSafe(trainerEncounterMusic); 
+    internal TrainerPicDatabase TrainerPics => getSafe(trainerPics);
+    internal TrainerDatabase Trainers => getSafe(trainers);
     internal string ProjectDir { get => projectDir; private set => projectDir = FileUtils.normalizePath(value); }
 
-    internal bool IsDirty => EventObjects.IsDirty || Trainers.IsDirty || TrainerClasses.IsDirty || TrainerPics.IsDirty;
+    internal bool IsDirty => databases.Any(db => db.IsDirty);
+    internal bool IsLoading { get; private set; } = false;
 
     public static Project Instance { get; private set; } = new Project();
+
+    private Project() {
+      registerDatabases(BattleAI, EventObjects, Items, Moves, Species,
+                        TrainerClasses, TrainerEncounterMusic, TrainerPics,
+                        Trainers);
+    }
+    void registerDatabases(params DatabaseBase[] databases) => this.databases.AddRange(databases);
+    T getSafe<T>(T database) where T: DatabaseBase {
+      while (database.IsLoading)
+        Thread.Yield();
+      return database;
+    }
 
     /// <summary>
     /// Event for when a project is loaded.
@@ -30,38 +55,24 @@ namespace DecompEditor {
     public event LoadEventHandler Loaded;
 
     public void load(string projectDir) {
+      IsLoading = true;
       ProjectDir = projectDir;
 
       // Load the different project databases.
       fileReplacements.Clear();
       try {
-        BattleAI.load(projectDir);
-        EventObjects.load(projectDir);
-        Items.load(projectDir);
-        Moves.load(projectDir);
-        Species.load(projectDir);
-        TrainerClasses.load(projectDir);
-        TrainerEncounterMusic.load(projectDir);
-        TrainerPics.load(projectDir);
-        Trainers.load(projectDir, BattleAI, Items, Moves, Species,
-                      TrainerClasses, TrainerPics);
+        var deserializer = new ProjectDeserializer(this);
+        Parallel.ForEach(databases, db => db.load(deserializer));
       } catch (Exception) {
-        BattleAI.reset();
-        EventObjects.reset();
-        Items.reset();
-        Moves.reset();
-        Species.reset();
-        TrainerClasses.reset();
-        TrainerEncounterMusic.reset();
-        TrainerPics.reset();
-        Trainers.reset();
+        foreach (DatabaseBase database in databases)
+          database.clear();
       }
 
       // Signal to all of the listeners that the project is loaded.
       Loaded?.Invoke();
+      IsLoading = false;
     }
 
-    /// Saving Projects
     public void save() {
       // Process any requested file replacements.
       if (fileReplacements.Count != 0) {
@@ -74,13 +85,9 @@ namespace DecompEditor {
         fileReplacements.Clear();
       }
 
-      // Trainer editor saving.
-      Trainers.save(ProjectDir, BattleAI);
-      TrainerClasses.save(ProjectDir);
-      TrainerPics.save(ProjectDir);
-
-      // Overworld editor saving.
-      EventObjects.save(ProjectDir);
+      var serializer = new ProjectSerializer(this);
+      foreach (DatabaseBase database in databases)
+        database.save(serializer);
     }
 
     /// Request a file replacement within the project.
