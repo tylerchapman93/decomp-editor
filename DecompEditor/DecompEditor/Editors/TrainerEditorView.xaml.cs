@@ -123,7 +123,7 @@ namespace DecompEditor.Editors {
 
     private void partyMenu_PreviewKeyDown(object sender, KeyEventArgs e) {
       DataGridRow clickedRow = ((DependencyObject)e.OriginalSource).FindVisualParent<DataGridRow>();
-      if (e.Key == Key.Delete && (clickedRow == null || clickedRow.IsNewItem))
+      if (e.Key != Key.Delete || clickedRow == null || clickedRow.IsNewItem)
         return;
       ObservableCollection<Pokemon> pokemon = ViewModel.CurrentTrainer.Party.Pokemon;
       if (pokemon.Count == 1)

@@ -29,5 +29,4 @@
     <Resource Include="Editors\baseline_clear_black_18dp.png" />
     <Resource Include="Editors\baseline_edit_black_18dp.png" />
   </ItemGroup>
-
 </Project>

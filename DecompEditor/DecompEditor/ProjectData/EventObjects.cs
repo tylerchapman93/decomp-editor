@@ -389,13 +389,18 @@ namespace DecompEditor {
 
       void updateSpriteSheetMakeRules(ProjectSerializer serializer) {
         var checkedFiles = new HashSet<EventObjectPic>();
+        var checkedFilePaths = new HashSet<string>();
         var needSprites = new Dictionary<string, Tuple<int, int>>();
         foreach (EventObject obj in database.Objects) {
           int objWidth = obj.Info.Width, objHeight = obj.Info.Height;
+          if (obj.Info.PicTable == null)
+            continue;
 
           foreach (EventObjectPicTable.Frame frame in obj.Info.PicTable.Frames) {
             if (!checkedFiles.Add(frame.Pic))
               continue;
+            checkedFilePaths.Add(frame.Pic.Path);
+
             BitmapImage file = FileUtils.loadBitmapImage(frame.Pic.FullPath);
             if (file.PixelWidth != objWidth || file.PixelHeight != objHeight)
               needSprites.Add(frame.Pic.Path, new Tuple<int, int>(objWidth / 8, objHeight / 8));
@@ -403,16 +408,20 @@ namespace DecompEditor {
               framesWithoutSpriteSheets.Add(frame);
           }
         }
-
-        if (needSprites.Count == 0)
-          return;
         string[] curLines = File.ReadAllLines(Path.Combine(serializer.project.ProjectDir, "spritesheet_rules.mk"));
         bool updatedExistingSheet = false;
         for (int i = 0, e = curLines.Length; i != e; ++i) {
-          if (!curLines[i].tryExtractPrefix("$(OBJEVENTGFXDIR)/", ".", out string linePath))
+          if (!curLines[i].tryExtractPrefix("$(OBJEVENTGFXDIR)/", ".", out string linePath) ||
+              !checkedFilePaths.Contains(linePath))
             continue;
-          if (!needSprites.TryGetValue(linePath, out Tuple<int, int> widthHeight))
+
+          // If the sprite doesn't need a sprite sheet, remove it.
+          if (!needSprites.TryGetValue(linePath, out Tuple<int, int> widthHeight)) {
+            // TODO: We could also just remove the lines completely, i.e. null them out.
+            curLines[i] = curLines[++i] = string.Empty;
+            updatedExistingSheet = true;
             continue;
+          }
           needSprites.Remove(linePath);
 
           string widthHeightLine = curLines[++i];

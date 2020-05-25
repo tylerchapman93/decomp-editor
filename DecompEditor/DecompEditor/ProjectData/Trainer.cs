@@ -21,11 +21,13 @@ namespace DecompEditor {
     public string Identifier {
       get => identifier;
       set {
-        if (identifier != null) {
-          Project.Instance.registerFileReplacement("TRAINER_" + identifier,
-                                                   "TRAINER_" + value);
-        }
-        Set(ref identifier, value);
+        var oldIdentifier = identifier;
+        if (!Set(ref identifier, value) || oldIdentifier == null)
+          return;
+        Project.Instance.registerFileReplacement("TRAINER_" + oldIdentifier,
+                                                 "TRAINER_" + identifier);
+        if (party != null)
+          party.CppVariable = "sParty_" + identifier.fromSnakeToPascal();
       }
     }
     public TrainerClass Class { get => @class; set => Set(ref @class, value); }
@@ -188,7 +190,7 @@ namespace DecompEditor {
         if (trainer.AiFlags.Count == 0)
           stream.WriteLine("0,");
         else
-          stream.WriteLine(string.Join(" | ", trainer.AiFlags.OrderBy(flag => flag.Order)) + ",");
+          stream.WriteLine(string.Join(" | ", trainer.AiFlags.OrderBy(flag => flag.Order).Select(flag => "AI_SCRIPT_" + flag.Identifier)) + ",");
         stream.WriteLine("        .partySize = ARRAY_COUNT(" + trainer.Party.CppVariable + "),");
         stream.Write("        .party = {.");
         if (partyHasItems) {
