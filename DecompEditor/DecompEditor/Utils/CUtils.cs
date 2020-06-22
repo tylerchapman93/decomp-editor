@@ -279,6 +279,8 @@ namespace DecompEditor.ParserUtils {
       if (!currentLine.tryExtractPrefix(linePrefix, "[", out string varName))
         return false;
       int skipLen = currentLine.IndexOf('\"') + 1;
+      if (skipLen == 0)
+        return false;
       string fileName = currentLine[skipLen..currentLine.IndexOf('.', skipLen)];
       handler(varName, fileName);
       return true;
