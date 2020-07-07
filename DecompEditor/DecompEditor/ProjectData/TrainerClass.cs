@@ -94,9 +94,10 @@ namespace DecompEditor {
 
           int classCount = 0;
           foreach (TrainerClass tClass in database.Classes) {
-            stream.WriteLine(string.Format("#define TRAINER_CLASS_" + "{0}".PadRight(longestClassID) + " 0x{1:X}",
+            stream.WriteLine(string.Format("#define TRAINER_CLASS_" + "{0}".PadRight(longestClassID - tClass.Identifier.Length) + " 0x{1:X}",
                                            tClass.Identifier, classCount++));
           }
+          stream.WriteLine();
         }, "include", "constants", "trainers.h");
       }
       static void saveClassNames(ProjectSerializer serializer, TrainerClassDatabase database) {
@@ -117,6 +118,7 @@ namespace DecompEditor {
           }
 
           stream.WriteLine(string.Format("    {0}0x{1:X}, 5{2},", "{", database.MaxClassCount, "}"));
+          stream.WriteLine("};");
         }, "src", "battle_main.c");
       }
     }
