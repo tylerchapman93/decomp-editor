@@ -1,0 +1,21 @@
+﻿{{ doNotModifyHeader }}
+## for eventObject in EventObjects
+const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_{{ eventObject.Identifier }} = {
+    0xFFFF,
+    OBJ_EVENT_PAL_TAG_{% if not existsIn(eventObject, "Palette") %}{{ eventObject.Frames.0.Identifier }}{% else %}{{ eventObject.Palette }}{% endif %},
+    {% if existsIn(eventObject, "ReflectionPalette") %}{{ eventObject.ReflectionPalette }}{% else %}0xFFFF{% endif %},
+    {{ eventObject.Width}} * {{eventObject.Height}},
+    {{ eventObject.Width }},
+    {{ eventObject.Height }},
+    {% if existsIn(eventObject, "PaletteSlot") %}{{ eventObject.PaletteSlot }}{% else %}0{% endif %},
+    {% if existsIn(eventObject, "ShadowSize") %}SHADOW_SIZE_{{ eventObject.ShadowSize }}{% else %}SHADOW_SIZE_M{% endif %},
+    {% if existsIn(eventObject, "Inanimate") %}TRUE{% else %}FALSE{% endif %},
+    {% if existsIn(eventObject, "EnableReflectionPaletteLoad") %}FALSE{% else %}TRUE{% endif %},
+    {% if existsIn(eventObject, "Tracks") %}TRACKS_{{ eventObject.Tracks }}{% else %}TRACKS_FOOT{% endif %},
+    &gObjectEventBaseOam_{{ eventObject.Width }}x{{ eventObject.Height }},
+    gObjectEventSpriteOamTables_{{ eventObject.Width }}x{{ eventObject.Height }},
+    {{eventObject.Animations}},
+    gObjectEventPicTable_{{ eventObject.Identifier }},
+    {% if existsIn(eventObject, "AffineAnimations") %}{{ eventObject.AffineAnimations}}{% else %}gDummySpriteAffineAnimTable{% endif %}
+};
+## endfor

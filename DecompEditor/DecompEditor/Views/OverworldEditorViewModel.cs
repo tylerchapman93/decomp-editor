@@ -56,11 +56,11 @@ namespace DecompEditor.Views {
     /// <summary>
     /// The currently selected frame within the event object.
     /// </summary>
-    public EventObjectPicTable.Frame CurrentFrame {
+    public EventObject.Frame CurrentFrame {
       get {
         if (CurrentObject == null)
           return null;
-        ObservableCollection<EventObjectPicTable.Frame> frames = CurrentObject.Info.PicTable.Frames;
+        ObservableCollection<EventObject.Frame> frames = CurrentObject.Frames;
         return AnimTableIndex >= frames.Count ? null : frames[AnimTableIndex];
       }
     }

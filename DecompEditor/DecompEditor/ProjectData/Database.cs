@@ -15,7 +15,11 @@ namespace DecompEditor {
 
       IsLoading = true;
       reset();
-      deserialize(deserializer);
+
+      if (checkAndUpgrade(deserializer))
+        serialize(new ProjectSerializer(Project.Instance));
+      else
+        deserialize(deserializer);
       IsDirty = false;
       IsLoading = false;
     }
@@ -33,5 +37,11 @@ namespace DecompEditor {
     protected abstract void reset();
     protected abstract void deserialize(ProjectDeserializer deserializer);
     protected virtual void serialize(ProjectSerializer serializer) => Debug.Assert(IsDirty == false, "Dirty databases must override 'serialize'");
+
+    /// <summary>
+    /// Ask the database to check if the project has an old format and to upgrade if it does.
+    /// Returns true if the project was upgraded.
+    /// </summary>
+    protected virtual bool checkAndUpgrade(ProjectDeserializer deserializer) { return false; }
   }
 }

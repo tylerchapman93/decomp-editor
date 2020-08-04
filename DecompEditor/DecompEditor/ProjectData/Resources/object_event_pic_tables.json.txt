@@ -1,0 +1,14 @@
+﻿{{ doNotModifyHeader }}
+## for eventObject in EventObjects
+const struct SpriteFrameImage gObjectEventPicTable_{{ eventObject.Identifier }}[] = {
+## for frame in eventObject.Frames
+## if existsIn(frame, "Count")
+## for index in range(frame.Count)
+    overworld_frame(gObjectEventPic_{{ frame.Identifier }}, ({{ eventObject.Width }} / 8), ({{ eventObject.Height }} / 8), {% if existsIn(frame, "StartIndex") %}{{ frame.StartIndex }} + {{index}}{% else %}{{index}}{% endif %}){% if not loop.is_last or not loop.parent.is_last %},{% endif %}
+## endfor
+## else
+    overworld_frame(gObjectEventPic_{{ frame.Identifier }}, ({{ eventObject.Width }} / 8), ({{ eventObject.Height }} / 8), {% if existsIn(frame, "StartIndex") %}{{ frame.StartIndex }}{% else %}0{% endif %}){% if not loop.is_last %},{% endif %}
+## endif
+## endfor
+};
+## endfor

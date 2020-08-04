@@ -65,9 +65,9 @@ namespace DecompEditor {
 
     public ProjectSerializer(Project project) => this.project = project;
 
-    StreamWriter openFile(bool append, params string[] paths) => new StreamWriter(Path.Combine(paths.Prepend(project.ProjectDir).ToArray()));
+    public StreamWriter openFile(params string[] paths) => new StreamWriter(Path.Combine(paths.Prepend(project.ProjectDir).ToArray()));
     public void serializeFile(Action<StreamWriter> serializeFn, params string[] paths) {
-      StreamWriter stream = openFile(append: false, paths);
+      StreamWriter stream = openFile(paths);
       serializeFn(stream);
       stream.Close();
     }
@@ -81,7 +81,7 @@ namespace DecompEditor {
       => serializePartialFile(new[] { sectionBeginCheck }, new[] { sectionEndCheck }, new[] { action }, paths);
     public void serializePartialFile(Func<string, bool>[] sectionBeginChecks, Func<string, bool>[] sectionEndChecks, Action<StreamWriter>[] actions, params string[] paths) {
       string[] curLines = File.ReadAllLines(Path.Combine(paths.Prepend(project.ProjectDir).ToArray()));
-      StreamWriter stream = openFile(append: false, paths);
+      StreamWriter stream = openFile(paths);
       stream.NewLine = "\n";
 
       // Copy the existing lines as is.

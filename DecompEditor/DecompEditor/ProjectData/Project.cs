@@ -20,15 +20,15 @@ namespace DecompEditor {
     private readonly TrainerDatabase trainers = new TrainerDatabase();
     private string projectDir;
 
-    internal BattleAIDatabase BattleAI => getSafe(battleAI);
-    internal EventObjectDatabase EventObjects => getSafe(eventObjects);
-    internal ItemDatabase Items => getSafe(items);
-    internal MoveDatabase Moves => getSafe(moves);
-    internal PokemonSpeciesDatabase Species => getSafe(species);
-    internal TrainerClassDatabase TrainerClasses => getSafe(trainerClasses);
-    internal TrainerEncounterMusicDatabase TrainerEncounterMusic => getSafe(trainerEncounterMusic); 
-    internal TrainerPicDatabase TrainerPics => getSafe(trainerPics);
-    internal TrainerDatabase Trainers => getSafe(trainers);
+    internal BattleAIDatabase BattleAI => battleAI;
+    internal EventObjectDatabase EventObjects => eventObjects;
+    internal ItemDatabase Items => items;
+    internal MoveDatabase Moves => moves;
+    internal PokemonSpeciesDatabase Species => species;
+    internal TrainerClassDatabase TrainerClasses => trainerClasses;
+    internal TrainerEncounterMusicDatabase TrainerEncounterMusic => trainerEncounterMusic; 
+    internal TrainerPicDatabase TrainerPics => trainerPics;
+    internal TrainerDatabase Trainers => trainers;
     internal string ProjectDir { get => projectDir; private set => projectDir = FileUtils.normalizePath(value); }
 
     internal bool IsDirty => databases.Any(db => db.IsDirty);
@@ -42,11 +42,6 @@ namespace DecompEditor {
                         Trainers);
     }
     void registerDatabases(params DatabaseBase[] databases) => this.databases.AddRange(databases);
-    T getSafe<T>(T database) where T: DatabaseBase {
-      while (database.IsLoading)
-        Thread.Yield();
-      return database;
-    }
 
     /// <summary>
     /// Event for when a project is loaded.
@@ -62,7 +57,8 @@ namespace DecompEditor {
       fileReplacements.Clear();
       try {
         var deserializer = new ProjectDeserializer(this);
-        Parallel.ForEach(databases, db => db.load(deserializer));
+        foreach (var db in databases)
+          db.load(deserializer);
       } catch (Exception) {
         foreach (DatabaseBase database in databases)
           database.clear();

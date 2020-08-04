@@ -1,0 +1,19 @@
+﻿AUTO_GEN_TARGETS_EVENT_OBJECTS := $(DATA_SRC_SUBDIR)/object_events/object_event_pic_tables.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info_pointers.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics.h.inc include/constants/event_objects.h.inc
+AUTO_GEN_TARGETS += $(AUTO_GEN_TARGETS_EVENT_OBJECTS)
+
+$(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info_pointers.h.inc: $(DATA_SRC_SUBDIR)/object_events/event_objects.json $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info_pointers.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info.h.inc: $(DATA_SRC_SUBDIR)/object_events/event_objects.json $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/object_events/object_event_graphics.h.inc: $(DATA_SRC_SUBDIR)/object_events/event_objects.json $(DATA_SRC_SUBDIR)/object_events/object_event_graphics.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/object_events/object_event_pic_tables.h.inc: $(DATA_SRC_SUBDIR)/object_events/event_objects.json $(DATA_SRC_SUBDIR)/object_events/object_event_pic_tables.h.json.txt
+	$(JSONPROC) $^ $@
+
+include/constants/event_objects.h.inc: $(DATA_SRC_SUBDIR)/object_events/event_objects.json include/constants/event_objects.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(C_BUILDDIR)/event_object_movement.o: c_dep += $(AUTO_GEN_TARGETS_EVENT_OBJECTS)

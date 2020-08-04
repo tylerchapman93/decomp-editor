@@ -24,7 +24,7 @@ namespace DecompEditor.Editors {
         var identifierSortDesc = new SortDescription("Identifier", ListSortDirection.Ascending);
         animList.Items.SortDescriptions.Add(identifierSortDesc);
         objectList.Items.SortDescriptions.Add(identifierSortDesc);
-        objectList.Items.Filter = obj => ((obj as EventObject).Info.PicTable?.Frames.Count ?? 0) != 0;
+        objectList.Items.Filter = obj => (obj as EventObject).Frames.Count != 0;
         objectList.Items.IsLiveSorting = true;
         var palListView = (ListCollectionView)CollectionViewSource.GetDefaultView(paletteList.ItemsSource);
         palListView.CustomSort = Comparer<EventObjectPalette>.Create((lhs, rhs) => lhs.Identifier.CompareToNatural(rhs.Identifier));
@@ -58,16 +58,16 @@ namespace DecompEditor.Editors {
 
     private void copyPreviousFrames() {
       int curIndex = ViewModel.AnimTableIndex;
-      ObservableCollection<EventObjectPicTable.Frame> frames = ViewModel.CurrentObject.Info.PicTable.Frames;
+      ObservableCollection<EventObject.Frame> frames = ViewModel.CurrentObject.Frames;
       int neededFrames = (curIndex - frames.Count) + 1;
       if (neededFrames <= 0)
         return;
 
-      EventObjectPicTable.Frame lastValidFrame = frames[Math.Min(curIndex - 1, frames.Count - 1)];
+      EventObject.Frame lastValidFrame = frames[Math.Min(curIndex - 1, frames.Count - 1)];
       int maxFrame = FileUtils.getImageWidth(lastValidFrame.Pic.FullPath);
-      maxFrame /= ViewModel.CurrentObject.Info.Width;
+      maxFrame /= ViewModel.CurrentObject.Width;
       for (int i = 0, e = neededFrames; i < e; ++i) {
-        frames.Add(new EventObjectPicTable.Frame() {
+        frames.Add(new EventObject.Frame() {
           Pic = lastValidFrame.Pic,
           Index = Math.Min(maxFrame - 1, lastValidFrame.Index + i + 1)
         });
@@ -75,7 +75,7 @@ namespace DecompEditor.Editors {
     }
 
     private void removeIndexButtom_Click(object sender, RoutedEventArgs evt) {
-      ObservableCollection<EventObjectPicTable.Frame> frames = ViewModel.CurrentObject.Info.PicTable.Frames;
+      ObservableCollection<EventObject.Frame> frames = ViewModel.CurrentObject.Frames;
       for (int i = ViewModel.AnimTableIndex, e = frames.Count; i != e; ++i)
         frames.RemoveAt(ViewModel.AnimTableIndex);
       ViewModel.AnimTableIndex -= 1;
@@ -86,7 +86,7 @@ namespace DecompEditor.Editors {
         overworldPic.Source = null;
         return;
       }
-      EventObjectPicTable.Frame currentFrame = ViewModel.CurrentFrame;
+      EventObject.Frame currentFrame = ViewModel.CurrentFrame;
 
       // If the frame is invalid, copy the previous frames and raise an event.
       if (currentFrame == null) {
@@ -95,22 +95,22 @@ namespace DecompEditor.Editors {
         ViewModel.RaisePropertyChanged("CurrentFrame");
         return;
       }
-      indexCount.Content = "of " + (ViewModel.CurrentObject?.Info.PicTable.Frames.Count - 1 ?? 0);
+      indexCount.Content = "of " + (ViewModel.CurrentObject.Frames.Count - 1);
 
       BitmapImage fileBitmap = FileUtils.loadBitmapImage(currentFrame.Pic.FullPath);
 
       // Make sure the object width/height is appropriate for the actual image.
       EventObject currentObject = ViewModel.CurrentObject;
-      currentObject.Info.Width = Math.Min(currentObject.Info.Width, fileBitmap.PixelWidth);
-      currentObject.Info.Height = Math.Min(currentObject.Info.Height, fileBitmap.PixelHeight);
+      currentObject.Width = Math.Min(currentObject.Width, fileBitmap.PixelWidth);
+      currentObject.Height = Math.Min(currentObject.Height, fileBitmap.PixelHeight);
 
       // Set max for framecount.
       spriteFrame.Maximum = ((fileBitmap.PixelWidth / 8) / (spriteWidth.Value / 8)) - 1;
       currentFrame.Index = Math.Min(currentFrame.Index, (int)spriteFrame.Maximum);
 
       // Check to see if the width/height of the object is the same as the image.
-      if (currentObject.Info.Width == fileBitmap.PixelWidth &&
-          currentObject.Info.Height == fileBitmap.PixelHeight) {
+      if (currentObject.Width == fileBitmap.PixelWidth &&
+          currentObject.Height == fileBitmap.PixelHeight) {
         overworldPic.Source = fileBitmap;
         spriteFrame.IsEnabled = false;
         return;
@@ -118,8 +118,8 @@ namespace DecompEditor.Editors {
 
       // Otherwise, slice the image to get the specific frame.
       overworldPic.Source = new CroppedBitmap(fileBitmap, new Int32Rect(
-        currentObject.Info.Width * currentFrame.Index, /*y=*/0, currentObject.Info.Width,
-        currentObject.Info.Height));
+        currentObject.Width * currentFrame.Index, /*y=*/0, currentObject.Width,
+        currentObject.Height));
       spriteFrame.IsEnabled = true;
     }
 

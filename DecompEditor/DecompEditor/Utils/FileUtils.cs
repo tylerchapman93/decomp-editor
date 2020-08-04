@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -76,5 +77,16 @@ namespace DecompEditor.Utils {
       return result;
     }
 
+    public static string readResource(string name) {
+      Assembly assembly = Assembly.GetExecutingAssembly();
+      string resourcePath = assembly.GetManifestResourceNames()
+            .Single(str => str.EndsWith(name));
+
+      using (Stream stream = assembly.GetManifestResourceStream(resourcePath)) {
+        using (StreamReader reader = new StreamReader(stream)) {
+          return reader.ReadToEnd();
+        }
+      }
+    }
   }
 }
