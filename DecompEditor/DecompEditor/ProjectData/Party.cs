@@ -6,6 +6,9 @@ using System.IO;
 using System.Linq;
 
 namespace DecompEditor {
+  /// <summary>
+  /// A specific pokemon from within a trainer's party.
+  /// </summary>
   public class Pokemon : ObservableObject {
     private int iv = 0;
     private int level = 5;
@@ -30,16 +33,34 @@ namespace DecompEditor {
       };
     }
   }
+
+  /// <summary>
+  /// The part of a trainer defined within the project.
+  /// </summary>
   public class TrainerParty : ObservableObject {
     private ObservableCollection<Pokemon> pokemon;
 
+    /// <summary>
+    /// The pokemon within the party.
+    /// </summary>
     public ObservableCollection<Pokemon> Pokemon {
       get => pokemon;
       set => SetAndTrackItemUpdates(ref pokemon, value, this);
     }
+
+    /// <summary>
+    /// The c++ variable of the party.
+    /// </summary>
     public string CppVariable { get; set; }
 
+    /// <summary>
+    /// Returns whether any of the pokemon in the party have items.
+    /// </summary>
     public bool HasItems => Pokemon.Any(pokemon => pokemon.HeldItem.Identifier != "ITEM_NONE");
+
+    /// <summary>
+    /// Returns whether any of the pokemon in the party have moves explicitly set.
+    /// </summary>
     public bool HasMoves => Pokemon.Any(pokemon => Enumerable.Any(pokemon.Moves, move => move.Identifier != "MOVE_NONE"));
 
     TrainerParty() => Pokemon = new ObservableCollection<Pokemon>();

@@ -16,6 +16,9 @@ namespace DecompEditor {
 
     public MainViewModel ViewModel => DataContext as MainViewModel;
 
-    private void window_Closing(object sender, System.ComponentModel.CancelEventArgs e) => ViewModel.checkDirtyAndSave();
+    private void window_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
+      ViewModel.checkDirtyAndSave();
+      NLog.LogManager.Shutdown();
+    }
   }
 }

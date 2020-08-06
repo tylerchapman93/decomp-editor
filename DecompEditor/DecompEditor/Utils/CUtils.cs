@@ -75,7 +75,7 @@ namespace DecompEditor.ParserUtils {
           }
         }
         line = line.Substring(line.IndexOf('=', name.Length + 2) + 2);
-        if (line[line.Length - 1] == ',')
+        if (line[^1] == ',')
           line = line.Remove(line.Length - 1);
         return true;
       }

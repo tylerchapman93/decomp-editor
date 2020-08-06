@@ -2,7 +2,7 @@
 ## for eventObject in EventObjects
 const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_{{ eventObject.Identifier }} = {
     0xFFFF,
-    OBJ_EVENT_PAL_TAG_{% if not existsIn(eventObject, "Palette") %}{{ eventObject.Frames.0.Identifier }}{% else %}{{ eventObject.Palette }}{% endif %},
+    OBJ_EVENT_PAL_TAG_{% if not existsIn(eventObject, "Palette") %}{{ upperSnakeCase(eventObject.Frames.0.Identifier) }}{% else %}{{ eventObject.Palette }}{% endif %},
     {% if existsIn(eventObject, "ReflectionPalette") %}{{ eventObject.ReflectionPalette }}{% else %}0xFFFF{% endif %},
     {{ eventObject.Width}} * {{eventObject.Height}},
     {{ eventObject.Width }},
@@ -12,7 +12,7 @@ const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_{{ eventObject.Ide
     {% if existsIn(eventObject, "Inanimate") %}TRUE{% else %}FALSE{% endif %},
     {% if existsIn(eventObject, "EnableReflectionPaletteLoad") %}FALSE{% else %}TRUE{% endif %},
     {% if existsIn(eventObject, "Tracks") %}TRACKS_{{ eventObject.Tracks }}{% else %}TRACKS_FOOT{% endif %},
-    &gObjectEventBaseOam_{{ eventObject.Width }}x{{ eventObject.Height }},
+    &gObjectEventBaseOam_{% if eventObject.Width <= 8 %}8{% else if eventObject.Width <= 16 %}16{% else if eventObject.Width <= 32 %}32{% else %}64{% endif %}x{% if eventObject.Height <= 8 %}8{% else if eventObject.Height <= 16 %}16{% else if eventObject.Height <= 32 %}32{% else %}64{% endif %},
     gObjectEventSpriteOamTables_{{ eventObject.Width }}x{{ eventObject.Height }},
     {{eventObject.Animations}},
     gObjectEventPicTable_{{ eventObject.Identifier }},

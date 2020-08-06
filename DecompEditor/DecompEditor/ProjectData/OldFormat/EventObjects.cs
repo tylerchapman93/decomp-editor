@@ -9,6 +9,9 @@ using Truncon.Collections;
 
 namespace DecompEditor.ProjectData.OldFormat {
   class EventObjects {
+    /// <summary>
+    /// A representation of object event graphics info suitable for the default format used by the project.
+    /// </summary>
     public class OldGraphicsInfo {
       public string CppVariable { get; set; }
       public EventObjectPalette Palette { get; set; }
@@ -24,10 +27,16 @@ namespace DecompEditor.ProjectData.OldFormat {
       public OldEventObjectPicTable PicTable { get; set; }
       public string AffineAnimations { get; set; }
     }
+    /// <summary>
+    /// A representation of object events suitable for the default format used by the project.
+    /// </summary>
     public class OldEventObject {
       public string Identifier { get; set; }
       public OldGraphicsInfo Info { get; set; }
     }
+    /// <summary>
+    /// A representation of object event pic tables suitable for the default format used by the project.
+    /// </summary>
     public class OldEventObjectPicTable {
       public string CppVar { get; set; }
       public List<EventObject.Frame> Frames { get; set; } = new List<EventObject.Frame>();
@@ -35,66 +44,52 @@ namespace DecompEditor.ProjectData.OldFormat {
     class Deserializer {
       class PicTableMap {
         readonly Dictionary<string, OldEventObjectPicTable> varToPicTable = new Dictionary<string, OldEventObjectPicTable>();
-        readonly Dictionary<string, int> picVarCount = new Dictionary<string, int>();
+        readonly HashSet<string> usedPicVars = new HashSet<string>();
         public void Add(OldEventObjectPicTable table) => varToPicTable.Add(table.CppVar, table);
         public OldEventObjectPicTable GetValue(string cppVar) {
           if (!varToPicTable.TryGetValue(cppVar, out OldEventObjectPicTable table))
             return new OldEventObjectPicTable() { CppVar = cppVar };
-          if (picVarCount.TryGetValue(cppVar, out int picCount)) {
+          if (!usedPicVars.Add(cppVar)) {
             // If the table has already been accessed, clone it so that each info gets its own
-            // table. This just makes it easier to edit.
-            picVarCount[cppVar] = ++picCount;
+            // table.
             table = new OldEventObjectPicTable() {
-              CppVar = cppVar + "_" + picCount,
+              CppVar = cppVar,
               Frames = table.Frames.Select(frame => new EventObject.Frame(frame)).ToList()
             };
-          } else {
-            picVarCount.Add(cppVar, ++picCount);
           }
 
           return table;
         }
       };
       readonly Dictionary<string, OldGraphicsInfo> cppVarToGraphicsInfo = new Dictionary<string, OldGraphicsInfo>();
-      readonly Dictionary<string, EventObjectAnimTable> varToAnimTable = new Dictionary<string, EventObjectAnimTable>();
       readonly Dictionary<string, EventObjectPalette> idToPalette = new Dictionary<string, EventObjectPalette>();
       readonly Dictionary<string, EventObjectPic> idToPic = new Dictionary<string, EventObjectPic>();
       readonly PicTableMap varToPicTable = new PicTableMap();
 
-      List<EventObjectAnimTable> animTables;
+      Dictionary<string, EventObjectAnimTable> varToAnimTable;
       List<OldGraphicsInfo> nonObjectGraphicsInfos;
       List<OldEventObject> objects;
       ObservableCollection<EventObjectPic> pics;
-      List<string> shadowSizes;
-      List<string> trackTypes;
       OrderedDictionary<string, EventObjectPalette> varToPalette;
 
-      public Deserializer(List<EventObjectAnimTable> animTables,
+      public Deserializer(Dictionary<string, EventObjectAnimTable> varToAnimTable,
                           List<OldGraphicsInfo> nonObjectGraphicsInfos,
                           List<OldEventObject> objects,
                           ObservableCollection<EventObjectPic> pics,
-                          List<string> shadowSizes,
-                          List<string> trackTypes,
                           OrderedDictionary<string, EventObjectPalette> varToPalette) {
-        this.animTables = animTables;
+        this.varToAnimTable = varToAnimTable;
         this.nonObjectGraphicsInfos = nonObjectGraphicsInfos;
         this.objects = objects;
         this.pics = pics;
-        this.shadowSizes = shadowSizes;
-        this.trackTypes = trackTypes;
         this.varToPalette = varToPalette;
       }
-
       public void deserialize(ProjectDeserializer deserializer) {
         loadPicsAndPalettes(deserializer);
         loadPaletteIDs(deserializer);
-        loadAnimTables(deserializer);
         loadPicTables(deserializer);
         loadGraphicsInfos(deserializer);
-        loadTracksAndShadowSizes(deserializer);
         loadObjects(deserializer);
       }
-
       void loadPicsAndPalettes(ProjectDeserializer deserializer) {
         var picPaths = new HashSet<string>();
         var fileDeserializer = new FileDeserializer();
@@ -174,18 +169,6 @@ namespace DecompEditor.ProjectData.OldFormat {
             nonObjectGraphicsInfos.Add(info);
         }
       }
-      void loadAnimTables(ProjectDeserializer deserializer) {
-        deserializer.deserializeFile((reader) => {
-          if (!reader.ReadLine().tryExtractPrefix("const union AnimCmd *const gObjectEventImageAnimTable_", "[", out string name))
-            return;
-          var animTable = new EventObjectAnimTable() {
-            Identifier = "gObjectEventImageAnimTable_" + name,
-            PrettyName = name.fromPascalToSentence()
-          };
-          varToAnimTable.Add(animTable.Identifier, animTable);
-          animTables.Add(animTable);
-        }, "src", "data", "object_events", "object_event_anims.h");
-      }
       void loadPicTables(ProjectDeserializer deserializer) {
         deserializer.deserializeFile((stream) => {
           if (!stream.ReadLine().tryExtractPrefix("const struct SpriteFrameImage gObjectEventPicTable_", "[", out string cppVar))
@@ -240,34 +223,19 @@ namespace DecompEditor.ProjectData.OldFormat {
           return true;
         }), "src", "data", "object_events", "object_event_graphics_info.h");
       }
-      void loadTracksAndShadowSizes(ProjectDeserializer deserializer) {
-        deserializer.deserializeFile((stream) => {
-          string line = stream.ReadLine();
-          if (line.tryExtractPrefix("#define SHADOW_SIZE_", " ", out string enumName))
-            shadowSizes.Add(enumName);
-          else if (line.tryExtractPrefix("#define TRACKS_", " ", out enumName))
-            trackTypes.Add(enumName);
-        }, "include", "constants", "event_objects.h");
-      }
     }
 
     public class Converter {
-      List<EventObjectAnimTable> animTables;
+      Dictionary<string, EventObjectAnimTable> varToAnimTable;
       List<OldGraphicsInfo> nonObjectGraphicsInfos = new List<OldGraphicsInfo>();
       ObservableCollection<EventObjectPic> pics;
-      List<string> shadowSizes;
-      List<string> trackTypes;
       OrderedDictionary<string, EventObjectPalette> varToPalette;
 
-      public Converter(List<EventObjectAnimTable> animTables,
+      public Converter(Dictionary<string, EventObjectAnimTable> varToAnimTable,
                        ObservableCollection<EventObjectPic> pics,
-                       List<string> shadowSizes,
-                       List<string> trackTypes,
                        OrderedDictionary<string, EventObjectPalette> varToPalette) {
-        this.animTables = animTables;
+        this.varToAnimTable = varToAnimTable;
         this.pics = pics;
-        this.shadowSizes = shadowSizes;
-        this.trackTypes = trackTypes;
         this.varToPalette = varToPalette;
       }
 
@@ -275,7 +243,7 @@ namespace DecompEditor.ProjectData.OldFormat {
         List<OldEventObject> oldObjects = new List<OldEventObject>();
 
         // Deserialize the project in the old format.
-        Deserializer deserializer = new Deserializer(animTables, nonObjectGraphicsInfos, oldObjects, pics, shadowSizes, trackTypes, varToPalette);
+        Deserializer deserializer = new Deserializer(varToAnimTable, nonObjectGraphicsInfos, oldObjects, pics, varToPalette);
         deserializer.deserialize(projectDeserializer);
 
         // Populate the project with the new format.
@@ -284,7 +252,7 @@ namespace DecompEditor.ProjectData.OldFormat {
         // Convert the old object event format to the proper format.
         foreach (OldEventObject oldObject in oldObjects) {
           objects.Add(new EventObject() {
-            Identifier = oldObject.Identifier,
+            Identifier = oldObject.Identifier.fromSnakeToPascal(),
             Palette = oldObject.Info.Palette,
             ReflectionPalette = oldObject.Info.ReflectionPalette,
             Width = oldObject.Info.Width,
@@ -357,8 +325,9 @@ namespace DecompEditor.ProjectData.OldFormat {
           stream.WriteLine("#include \"object_event_pic_tables.h.inc\"\n");
 
           // Write out the non object infos.
+          HashSet<string> usedPicTables = new HashSet<string>();
           foreach (OldGraphicsInfo info in nonObjectGraphicsInfos) {
-            if (info.PicTable.Frames.Count == 0)
+            if (info.PicTable.Frames.Count == 0 || !usedPicTables.Add(info.PicTable.CppVar))
               continue;
             stream.WriteLine("const struct SpriteFrameImage " + info.PicTable.CppVar + "[] = {");
             int width = info.Width / 8, height = info.Height / 8;

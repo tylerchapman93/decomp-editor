@@ -1,4 +1,5 @@
-﻿AUTO_GEN_TARGETS_EVENT_OBJECTS := $(DATA_SRC_SUBDIR)/object_events/object_event_pic_tables.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info_pointers.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics.h.inc include/constants/event_objects.h.inc
+﻿
+AUTO_GEN_TARGETS_EVENT_OBJECTS := $(DATA_SRC_SUBDIR)/object_events/object_event_pic_tables.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info_pointers.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info.h.inc $(DATA_SRC_SUBDIR)/object_events/object_event_graphics.h.inc include/constants/event_objects.h.inc
 AUTO_GEN_TARGETS += $(AUTO_GEN_TARGETS_EVENT_OBJECTS)
 
 $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info_pointers.h.inc: $(DATA_SRC_SUBDIR)/object_events/event_objects.json $(DATA_SRC_SUBDIR)/object_events/object_event_graphics_info_pointers.h.json.txt
@@ -16,4 +17,11 @@ $(DATA_SRC_SUBDIR)/object_events/object_event_pic_tables.h.inc: $(DATA_SRC_SUBDI
 include/constants/event_objects.h.inc: $(DATA_SRC_SUBDIR)/object_events/event_objects.json include/constants/event_objects.h.json.txt
 	$(JSONPROC) $^ $@
 
-$(C_BUILDDIR)/event_object_movement.o: c_dep += $(AUTO_GEN_TARGETS_EVENT_OBJECTS)
+EVENT_OBJECT_GRAPHICS := $(shell find graphics/object_events/pics -type f -name '*.png')
+EVENT_OBJECT_4BPP := $(patsubst %.png, %.4bpp, $(EVENT_OBJECT_GRAPHICS))
+
+EVENT_OBJECT_PALS := $(shell find graphics/object_events/palettes -type f -name '*.pal')
+EVENT_OBJECT_EXPLICIT_GBAPALS := $(patsubst %.pal, %.gbapal, $(EVENT_OBJECT_PALS))
+EVENT_OBJECT_GBAPALS := $(patsubst %.png, %.gbapal, $(EVENT_OBJECT_GRAPHICS))
+
+$(C_BUILDDIR)/event_object_movement.o: c_dep += $(AUTO_GEN_TARGETS_EVENT_OBJECTS) $(EVENT_OBJECT_4BPP) $(EVENT_OBJECT_GBAPALS) $(EVENT_OBJECT_EXPLICIT_GBAPALS)

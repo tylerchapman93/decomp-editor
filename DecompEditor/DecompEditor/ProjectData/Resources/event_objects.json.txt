@@ -1,6 +1,6 @@
 ﻿{{ doNotModifyHeader }}
 ## for eventObject in EventObjects
-#define OBJ_EVENT_GFX_{{ eventObject.Identifier }} {{ loop.index }}
+#define OBJ_EVENT_GFX_{{ upperSnakeCase(eventObject.Identifier) }} {{ loop.index }}
 ## endfor
 
 #define NUM_OBJ_EVENT_GFX {{ length(EventObjects) }}

@@ -4,11 +4,17 @@ using System;
 using System.Collections.Generic;
 
 namespace DecompEditor {
+  /// <summary>
+  /// This class represents a specific trainer class.
+  /// </summary>
   public class TrainerClass : ObservableObject {
     private string identifier;
     private string name;
     private int moneyFactor = 0;
 
+    /// <summary>
+    /// The C identifier of the class.
+    /// </summary>
     public string Identifier {
       get => identifier;
       set {
@@ -19,7 +25,13 @@ namespace DecompEditor {
         Set(ref identifier, value);
       }
     }
+    /// <summary>
+    /// The name of the trainer class.
+    /// </summary>
     public string Name { get => name; set => Set(ref name, value); }
+    /// <summary>
+    /// The money factor of the trainer class.
+    /// </summary>
     public int MoneyFactor { get => moneyFactor; set => Set(ref moneyFactor, value); }
   }
 
@@ -31,12 +43,24 @@ namespace DecompEditor {
     public int MaxClassCount => 255;
     public int MaxClassNameLen => 13;
 
+    /// <summary>
+    /// The name of this database.
+    /// </summary>
+    public override string Name => "Trainer Class Database";
+
+    /// <summary>
+    /// Returns the trainer classes defined within the project.
+    /// </summary>
     public ObservableCollection<TrainerClass> Classes {
       get => classes;
       private set => SetAndTrackItemUpdates(ref classes, value, this);
     }
+
     public TrainerClassDatabase() => Classes = new ObservableCollection<TrainerClass>();
 
+    /// <summary>
+    /// Reset the data within this database.
+    /// </summary>
     protected override void reset() {
       Classes.Clear();
       idToTrainerClass.Clear();
@@ -44,12 +68,25 @@ namespace DecompEditor {
 
     /// Only used during serialization.
     internal TrainerClass getFromId(string id) => idToTrainerClass[id];
+
+    /// <summary>
+    /// Add a trainer class to the database.
+    /// </summary>
+    /// <param name="newClass"></param>
     public void addClass(TrainerClass newClass) {
       idToTrainerClass.Add(newClass.Identifier, newClass);
       Classes.Add(newClass);
     }
 
+    /// <summary>
+    /// Deserialize the trainer classes from the project directory.
+    /// </summary>
+    /// <param name="deserializer"></param>
     protected override void deserialize(ProjectDeserializer deserializer) => Deserializer.deserialize(deserializer, this);
+    /// <summary>
+    /// Serialize the trainer class data to the project directory.
+    /// </summary>
+    /// <param name="serializer"></param>
     protected override void serialize(ProjectSerializer serializer) => Serializer.serialize(serializer, this);
 
     class Deserializer {

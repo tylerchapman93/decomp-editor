@@ -6,6 +6,9 @@ using System.IO;
 using System.Linq;
 
 namespace DecompEditor {
+  /// <summary>
+  /// This class represents a specific trainer within the project.
+  /// </summary>
   public class Trainer : ObservableObject {
     private string identifier;
     private TrainerClass @class;
@@ -18,6 +21,9 @@ namespace DecompEditor {
     private ObservableCollection<CDefine> aiFlags;
     private TrainerParty party;
 
+    /// <summary>
+    /// The C identifier of the trainer.
+    /// </summary>
     public string Identifier {
       get => identifier;
       set {
@@ -30,21 +36,51 @@ namespace DecompEditor {
           party.CppVariable = "sParty_" + identifier.fromSnakeToPascal();
       }
     }
+    /// <summary>
+    /// The class of the trainer.
+    /// </summary>
     public TrainerClass Class { get => @class; set => Set(ref @class, value); }
+    /// <summary>
+    /// The encounter music of the trainer battle.
+    /// </summary>
     public CDefine EncounterMusic { get => encounterMusic; set => Set(ref encounterMusic, value); }
+    /// <summary>
+    /// The front pic of the trainer.
+    /// </summary>
     public TrainerPic Pic { get => pic; set => Set(ref pic, value); }
+    /// <summary>
+    /// The name of the trainer.
+    /// </summary>
     public string Name { get => name; set => Set(ref name, value); }
+    /// <summary>
+    /// The items held by the trainer.
+    /// </summary>
     public ObservableCollection<Item> Items {
       get => items;
       set => SetAndTrack(ref items, value);
     }
+    /// <summary>
+    /// Whether this trainer is a double battle or not.
+    /// </summary>
     public bool DoubleBattle { get => doubleBattle; set => Set(ref doubleBattle, value); }
+    /// <summary>
+    /// Whether this trainer is male or not.
+    /// </summary>
     public bool IsMale { get => isMale; set => Set(ref isMale, value); }
+    /// <summary>
+    /// Whether this trainer female or not.
+    /// </summary>
     public bool IsFemale { get => !IsMale; set => IsMale = !value; }
+    /// <summary>
+    /// The AI flags used by this trainer during battle.
+    /// </summary>
     public ObservableCollection<CDefine> AiFlags {
       get => aiFlags;
       set => SetAndTrack(ref aiFlags, value);
     }
+    /// <summary>
+    /// The party of Pokemon used by this trainer.
+    /// </summary>
     public TrainerParty Party { get => party; set => SetAndTrack(ref party, value); }
 
     public Trainer() {
@@ -56,6 +92,14 @@ namespace DecompEditor {
   class TrainerDatabase : DatabaseBase {
     private ObservableCollection<Trainer> trainers;
 
+    /// <summary>
+    /// The name of this database.
+    /// </summary>
+    public override string Name => "Trainer Database";
+
+    /// <summary>
+    /// Returns the trainers defined within the project.
+    /// </summary>
     public ObservableCollection<Trainer> Trainers {
       get => trainers;
       private set => SetAndTrackItemUpdates(ref trainers, value, this);
@@ -63,11 +107,22 @@ namespace DecompEditor {
 
     public TrainerDatabase() => Trainers = new ObservableCollection<Trainer>();
 
+    /// <summary>
+    /// Reset the data within this database.
+    /// </summary>
     protected override void reset() => Trainers.Clear();
 
+    /// <summary>
+    /// Deserialize the trainers within the project directory.
+    /// </summary>
+    /// <param name="deserializer"></param>
     protected override void deserialize(ProjectDeserializer deserializer)
       => Deserializer.deserialize(deserializer, this);
 
+    /// <summary>
+    /// Serialize the trainer data to the project directory.
+    /// </summary>
+    /// <param name="serializer"></param>
     protected override void serialize(ProjectSerializer serializer)
       => Serializer.serialize(serializer, this);
 

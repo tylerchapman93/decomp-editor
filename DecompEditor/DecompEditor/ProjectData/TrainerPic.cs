@@ -7,6 +7,9 @@ using System.Windows.Media;
 using Truncon.Collections;
 
 namespace DecompEditor {
+  /// <summary>
+  /// This class represents a specific trainer front pic.
+  /// </summary>
   public class TrainerPic : ObservableObject {
     private string fullPath;
     private string path;
@@ -16,12 +19,24 @@ namespace DecompEditor {
     private int coordYOffset = 1;
     private int uncompressedSize;
 
+    /// <summary>
+    /// The full file path of the picture.
+    /// </summary>
     public string FullPath {
       get => fullPath;
       set => Set(ref fullPath, FileUtils.normalizePath(value));
     }
+    /// <summary>
+    /// The project relative path of the picture.
+    /// </summary>
     public string Path { get => path; set => Set(ref path, value); }
+    /// <summary>
+    /// The path of the palette used for the picture.
+    /// </summary>
     public string PalettePath { get => palettePath; set => Set(ref palettePath, value); }
+    /// <summary>
+    /// The C identifier of the picture.
+    /// </summary>
     public string Identifier {
       get => identifier;
       set {
@@ -36,14 +51,31 @@ namespace DecompEditor {
         Set(ref identifier, value);
       }
     }
+    /// <summary>
+    /// The coordinate size of the picture.
+    /// </summary>
     public int CoordSize { get => coordSize; set => Set(ref coordSize, value); }
+    /// <summary>
+    /// The Y-coordinate offset of the picture.
+    /// </summary>
     public int CoordYOffset { get => coordYOffset; set => Set(ref coordYOffset, value); }
+    /// <summary>
+    /// The uncompressed size of the picture.
+    /// </summary>
     public int UncompressedSize { get => uncompressedSize; set => Set(ref uncompressedSize, value); }
   }
   public class TrainerPicDatabase : DatabaseBase {
     readonly OrderedDictionary<string, TrainerPic> idToPic = new OrderedDictionary<string, TrainerPic>();
     private ObservableCollection<TrainerPic> frontPics;
 
+    /// <summary>
+    /// The name of the database.
+    /// </summary>
+    public override string Name => "Trainer Front Pic Database";
+
+    /// <summary>
+    /// Returns all of the front trainer pics within the project.
+    /// </summary>
     public ObservableCollection<TrainerPic> FrontPics {
       get => frontPics;
       set => SetAndTrackItemUpdates(ref frontPics, value, this);
@@ -57,19 +89,34 @@ namespace DecompEditor {
         addFrontPic(pic = new TrainerPic() { Identifier = id });
       return pic;
     }
+    /// <summary>
+    /// Add a new trainer front pic to the project.
+    /// </summary>
+    /// <param name="newPic"></param>
     public void addFrontPic(TrainerPic newPic) {
       idToPic.Add(newPic.Identifier, newPic);
       FrontPics.Add(newPic);
     }
 
+    /// <summary>
+    /// Reset the data within this database.
+    /// </summary>
     protected override void reset() {
       idToPic.Clear();
       FrontPics.Clear();
     }
 
+    /// <summary>
+    /// Deserialize the trainer pics from the project directory.
+    /// </summary>
+    /// <param name="deserializer"></param>
     protected override void deserialize(ProjectDeserializer deserializer)
       => Deserializer.deserialize(deserializer, this);
 
+    /// <summary>
+    /// Serialize the trainer pics to the project directory.
+    /// </summary>
+    /// <param name="serializer"></param>
     protected override void serialize(ProjectSerializer serializer)
       => Serializer.serialize(serializer, this);
 

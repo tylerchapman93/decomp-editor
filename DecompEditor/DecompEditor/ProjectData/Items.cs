@@ -5,23 +5,52 @@ using System.Collections.Generic;
 using Truncon.Collections;
 
 namespace DecompEditor {
+  /// <summary>
+  /// A specific item within the project.
+  /// </summary>
   public class Item : ObservableObject {
     private string name;
     private string identifier;
 
+    /// <summary>
+    /// The name of the item.
+    /// </summary>
     public string Name { get => name; set => Set(ref name, value); }
+    /// <summary>
+    /// The C identifier of the item.
+    /// </summary>
     public string Identifier { get => identifier; set => Set(ref identifier, value); }
   }
 
   public class ItemDatabase : DatabaseBase {
     readonly OrderedDictionary<string, Item> nameToItem = new OrderedDictionary<string, Item>();
 
+    /// <summary>
+    /// The name of this database.
+    /// </summary>
+    public override string Name => "Item Database";
+
+    /// <summary>
+    /// Returns the items defined within the project.
+    /// </summary>
     public IEnumerable<Item> Items => nameToItem.Values;
 
+    /// <summary>
+    /// Returns the item correpsonding to the provided id.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     public Item getFromId(string id) => nameToItem[id];
 
+    /// <summary>
+    /// Reset the data held by this database.
+    /// </summary>
     protected override void reset() => nameToItem.Clear();
 
+    /// <summary>
+    /// Deserialize the items from the project directory.
+    /// </summary>
+    /// <param name="deserializer"></param>
     protected override void deserialize(ProjectDeserializer deserializer)
       => Deserializer.deserialize(deserializer, this);
 

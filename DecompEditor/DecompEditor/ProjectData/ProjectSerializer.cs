@@ -14,7 +14,11 @@ namespace DecompEditor {
     /// <summary>
     /// Open a file for read at the given path.
     /// </summary>
-    StreamReader openFile(params string[] paths) => File.OpenText(Path.Combine(paths.Prepend(project.ProjectDir).ToArray()));
+    StreamReader openFile(params string[] paths) {
+      string filePath = Path.Combine(paths.Prepend(project.ProjectDir).ToArray());
+      Project.Logger.Info("Deserializing data within {File}", FileUtils.normalizePath(filePath));
+      return File.OpenText(filePath);
+    }
     public void deserializeFile(FileDeserializer deserializer, params string[] paths) {
       StreamReader stream = openFile(paths);
       deserializer.deserialize(stream);
@@ -31,7 +35,6 @@ namespace DecompEditor {
         if (deserializer(stream))
           break;
       }
-
       stream.Close();
     }
     public void deserializeFile(Action<StreamReader> deserializer, params string[] paths) {

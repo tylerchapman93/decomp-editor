@@ -5,10 +5,10 @@ const u32 gObjectEventPic_{{ pic.Identifier }}[] = INCBIN_U32("graphics/object_e
 ## endfor
 
 ## for palette in Palettes
-const u16 gObjectEventPal_{{ palette.Identifier }}[] = INCBIN_U16("{{ palette.Path }}.gbapal");
+const u16 gObjectEventPalette{{ palette.Identifier }}[] = INCBIN_U16("{{ palette.Path }}.gbapal");
 ## endfor
 ## for pic in Pics
 {% if existsIn(pic, "PaletteTag") %}
-const u16 gObjectEventPal_{{ pic.Identifier }}[] = INCBIN_U16("graphics/object_events/pics/{{ pic.Path }}.gbapal");
+const u16 gObjectEventPalette{{ pic.Identifier }}[] = INCBIN_U16("graphics/object_events/pics/{{ pic.Path }}.gbapal");
 {% endif %}
 ## endfor
