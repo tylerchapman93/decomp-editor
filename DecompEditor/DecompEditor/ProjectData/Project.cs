@@ -75,7 +75,6 @@ namespace DecompEditor {
         var serializer = new ProjectSerializer(this);
         foreach (DatabaseBase db in databasesToUpgrade) {
           try {
-            Logger.Info("Upgrading the {Database} database", db.Name);
             db.upgrade(deserializer, serializer);
           } catch (Exception e) {
             MessageBox.Show("Failed to upgrade project to new format, see decompEditor.log for more details.");

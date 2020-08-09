@@ -80,8 +80,22 @@ namespace DecompEditor {
     /// Upgrade the current format of the project to the new format. This
     /// is called on databases that returned true for `needsUpgrade`.
     /// </summary>
-    public virtual void upgrade(ProjectDeserializer deserializer, ProjectSerializer serializer) {
+    protected virtual void upgradeFormat(ProjectDeserializer deserializer, ProjectSerializer serializer) {
       Debug.Fail("Databases must override 'upgrade' if 'needsUpgrade' returns true");
+    }
+
+    /// <summary>
+    /// Upgrade the current format of the project to the new format. This
+    /// is called on databases that returned true for `needsUpgrade`.
+    /// </summary>
+    public void upgrade(ProjectDeserializer deserializer, ProjectSerializer serializer) {
+      Debug.Assert(needsUpgrade(), "expected database to need upgrade");
+      Project.Logger.Info("Upgrading {Database}", Name);
+      IsLoading = true;
+      reset();
+      upgradeFormat(deserializer, serializer);
+      IsDirty = false;
+      IsLoading = false;
     }
   }
 }
