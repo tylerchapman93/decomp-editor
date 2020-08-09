@@ -35,6 +35,12 @@ namespace DecompEditor {
     /// </summary>
     public static NLog.Logger Logger { get; private set; } = NLog.LogManager.GetCurrentClassLogger();
 
+    /// <summary>
+    /// The file containing the editor logs.
+    /// </summary>
+    public static string LogFileName 
+    => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DecompEditor", "decompEditor.log");
+
     private Project() {
       registerDatabases(BattleAI, EventObjects, Items, Moves, Species,
                         TrainerClasses, TrainerEncounterMusic, TrainerPics,
@@ -77,8 +83,8 @@ namespace DecompEditor {
           try {
             db.upgrade(deserializer, serializer);
           } catch (Exception e) {
-            MessageBox.Show("Failed to upgrade project to new format, see decompEditor.log for more details.");
-            Logger.Error(e, "Failed to upgrade {Database} database to its expected format", db.Name);
+            MessageBox.Show($"Failed to upgrade project to new format, see {LogFileName} for more details.");
+            Logger.Error(e, "Failed to upgrade {Database} to its expected format", db.Name);
 
             foreach (DatabaseBase database in databases)
               database.clear();
@@ -94,8 +100,8 @@ namespace DecompEditor {
         try {
           db.load(deserializer);
         } catch (Exception e) {
-          MessageBox.Show("Failed to load project, see decompEditor.log for more details");
-          Logger.Error(e, "Failed to load {Database} database from the project directory", db.Name);
+          MessageBox.Show($"Failed to load project, see {LogFileName} for more details");
+          Logger.Error(e, "Failed to load {Database} from the project directory", db.Name);
 
           foreach (DatabaseBase database in databases)
             database.clear();
