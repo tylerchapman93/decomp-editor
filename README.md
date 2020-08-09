@@ -16,7 +16,7 @@ a project using the default format, the tool will prompt the user with an attemp
 usable by this tool. The conversion will automatically handle a majority of the necessary changes to the
 project directory, but a few need to be handled manually:
 
-* In jsonproc.cpp, add the following event callback.
+* In jsonproc.cpp, add the following event callbacks.
 
 ```c++
 env.add_callback("upperSnakeCase", 1, [](Arguments& args) {
@@ -32,6 +32,27 @@ env.add_callback("upperSnakeCase", 1, [](Arguments& args) {
 		output.push_back(std::toupper(value[i]));
 	}
 	return output;
+});
+
+env.add_callback("add", 2, [](Arguments& args) {
+	int minuend = args.at(0)->get<int>();
+	int subtrahend = args.at(1)->get<int>();
+
+	return minuend + subtrahend;
+});
+
+env.add_callback("multiply", 2, [](Arguments& args) {
+	int minuend = args.at(0)->get<int>();
+	int subtrahend = args.at(1)->get<int>();
+
+	return minuend * subtrahend;
+});
+
+env.add_callback("divide", 2, [](Arguments& args) {
+	int minuend = args.at(0)->get<int>();
+	int subtrahend = args.at(1)->get<int>();
+
+	return minuend / subtrahend;
 });
 ```
 

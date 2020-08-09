@@ -12,3 +12,7 @@ const u16 gObjectEventPalette{{ palette.Identifier }}[] = INCBIN_U16("{{ palette
 const u16 gObjectEventPalette{{ pic.Identifier }}[] = INCBIN_U16("graphics/object_events/pics/{{ pic.Path }}.gbapal");
 {% endif %}
 ## endfor
+
+//
+// This section of the file may be modified manually.
+//

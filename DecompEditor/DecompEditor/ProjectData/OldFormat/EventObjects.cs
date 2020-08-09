@@ -286,24 +286,22 @@ namespace DecompEditor.ProjectData.OldFormat {
         // Remove the direct use of object graphics ids.
         string eventObjectConstantsPath = Path.Combine(projectDir, "include", "constants", "event_objects.h");
         curLines = File.ReadAllLines(eventObjectConstantsPath).ToList();
-        curLines.RemoveRange(2, curLines.FindIndex(str => str.Contains("NUM_OBJ_EVENT_GFX")) - 1);
-        curLines.InsertRange(3, new string[] {
-          "#include \"event_objects.h.inc\""
-        });
-        File.WriteAllLines(eventObjectConstantsPath, curLines);
+        curLines.RemoveRange(0, curLines.FindIndex(str => str.Contains("NUM_OBJ_EVENT_GFX")) + 1);
 
         // Generate the file for object_event_graphics_info_pointers.h.inc
         using (StreamWriter stream = new StreamWriter(eventObjectConstantsPath + ".json.txt")) {
           stream.NewLine = "\n";
           stream.Write(FileUtils.readResource("event_objects.json.txt"));
+          foreach (var line in curLines)
+            stream.WriteLine(line);
         }
 
         // Remove the direct use of graphics info pointers.
         string eventObjectInfoPointersPath = Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics_info_pointers.h");
         curLines = File.ReadAllLines(eventObjectInfoPointersPath).ToList();
-        using (StreamWriter stream = new StreamWriter(eventObjectInfoPointersPath)) {
+        using (StreamWriter stream = new StreamWriter(eventObjectInfoPointersPath + ".json.txt")) {
           stream.NewLine = "\n";
-          stream.WriteLine("#include \"object_event_graphics_info_pointers.h.inc\"\n");
+          stream.Write(FileUtils.readResource("object_event_graphics_info_pointers.json.txt"));
 
           // Write back the graphics infos that don't relate to objects.
           foreach (OldGraphicsInfo info in nonObjectGraphicsInfos)
@@ -312,17 +310,11 @@ namespace DecompEditor.ProjectData.OldFormat {
             stream.WriteLine(str);
         }
 
-        // Generate the file for object_event_graphics_info_pointers.h.inc
-        using (StreamWriter stream = new StreamWriter(eventObjectInfoPointersPath + ".json.txt")) {
-          stream.NewLine = "\n";
-          stream.Write(FileUtils.readResource("object_event_graphics_info_pointers.json.txt"));
-        }
-
         // Remove the use of object event pic tables.
         string eventObjectInfoPicTablePath = Path.Combine(projectDir, "src", "data", "object_events", "object_event_pic_tables.h");
-        using (StreamWriter stream = new StreamWriter(eventObjectInfoPicTablePath)) {
+        using (StreamWriter stream = new StreamWriter(eventObjectInfoPicTablePath + ".json.txt")) {
           stream.NewLine = "\n";
-          stream.WriteLine("#include \"object_event_pic_tables.h.inc\"\n");
+          stream.WriteLine(FileUtils.readResource("object_event_pic_tables.json.txt"));
 
           // Write out the non object infos.
           HashSet<string> usedPicTables = new HashSet<string>();
@@ -343,40 +335,30 @@ namespace DecompEditor.ProjectData.OldFormat {
           }
         }
 
-        // Generate the file for object_event_graphics_info_pointers.h.inc
-        using (StreamWriter stream = new StreamWriter(eventObjectInfoPicTablePath + ".json.txt")) {
-          stream.NewLine = "\n";
-          stream.Write(FileUtils.readResource("object_event_pic_tables.json.txt"));
-        }
-
         // Remove the use of object event graphics infos.
         string eventObjectInfoGraphicsInfoPath = Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics_info.h");
         curLines = File.ReadAllLines(eventObjectInfoGraphicsInfoPath).ToList();
         curLines.RemoveAll(str => !nonObjectGraphicsInfos.Any(info => str.Contains(info.CppVariable)));
-        curLines.InsertRange(0, new string[] {
-          "#include \"object_event_graphics_info.h.inc\"\n"
-        });
-        File.WriteAllLines(eventObjectInfoGraphicsInfoPath, curLines);
 
         // Generate the file for object_event_graphics_info_pointers.h.inc
         using (StreamWriter stream = new StreamWriter(eventObjectInfoGraphicsInfoPath + ".json.txt")) {
           stream.NewLine = "\n";
-          stream.Write(FileUtils.readResource("object_event_graphics_info.json.txt"));
+          stream.WriteLine(FileUtils.readResource("object_event_graphics_info.json.txt"));
+          foreach (var line in curLines)
+            stream.WriteLine(line);
         }
 
         // Remove the use of object event graphics pics and palettes.
         string eventObjectInfoGraphicsPath = Path.Combine(projectDir, "src", "data", "object_events", "object_event_graphics.h");
         curLines = File.ReadAllLines(eventObjectInfoGraphicsPath).ToList();
-        curLines.InsertRange(0, new string[] {
-          "#include \"object_event_graphics.h.inc\"\n"
-        });
         curLines.RemoveAll(str => str.StartsWith("const u32 gObjectEventPic_") || str.StartsWith("const u16 gObjectEventPalette"));
-        File.WriteAllLines(eventObjectInfoGraphicsPath, curLines);
 
         // Generate the file for object_event_graphics_info_pointers.h.inc
         using (StreamWriter stream = new StreamWriter(eventObjectInfoGraphicsPath + ".json.txt")) {
           stream.NewLine = "\n";
-          stream.Write(FileUtils.readResource("object_event_graphics.json.txt"));
+          stream.WriteLine(FileUtils.readResource("object_event_graphics.json.txt"));
+          foreach (var line in curLines)
+            stream.WriteLine(line);
         }
 
         // Update the json_data_rules makefile.

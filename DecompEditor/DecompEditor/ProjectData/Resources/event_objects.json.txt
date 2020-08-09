@@ -1,6 +1,13 @@
 ﻿{{ doNotModifyHeader }}
+#ifndef GUARD_CONSTANTS_EVENT_OBJECTS_H
+#define GUARD_CONSTANTS_EVENT_OBJECTS_H
+
 ## for eventObject in EventObjects
 #define OBJ_EVENT_GFX_{{ upperSnakeCase(eventObject.Identifier) }} {{ loop.index }}
 ## endfor
 
 #define NUM_OBJ_EVENT_GFX {{ length(EventObjects) }}
+
+//
+// This section of the file may be modified manually.
+//

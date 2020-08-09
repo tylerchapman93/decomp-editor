@@ -29,3 +29,7 @@ const struct SpritePalette sObjectEventSpritePalettes[] = {
 ## endfor
     {NULL,                 0x0000},
 };
+
+//
+// This section of the file may be modified manually.
+//
