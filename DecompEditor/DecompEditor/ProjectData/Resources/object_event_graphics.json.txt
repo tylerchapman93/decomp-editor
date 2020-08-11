@@ -14,5 +14,5 @@ const u16 gObjectEventPalette{{ pic.Identifier }}[] = INCBIN_U16("graphics/objec
 ## endfor
 
 //
-// This section of the file may be modified manually.
+// This section of the file contains static data.
 //

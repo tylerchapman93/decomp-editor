@@ -56,7 +56,8 @@ namespace DecompEditor {
       set {
         if (identifier != null) {
           Project.Instance.registerFileReplacement(
-            "OBJ_EVENT_GFX_" + identifier, "OBJ_EVENT_GFX_" + value);
+            "OBJ_EVENT_GFX_" + identifier.fromPascalToSnake(), 
+            "OBJ_EVENT_GFX_" + value.fromPascalToSnake());
         }
 
         Set(ref identifier, value);

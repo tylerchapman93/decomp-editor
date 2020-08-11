@@ -4,5 +4,5 @@ const struct ObjectEventGraphicsInfo gObjectEventGraphicsInfo_{{ eventObject.Ide
 ## endfor
 
 //
-// This section of the file may be modified manually.
+// This section of the file contains static data.
 //
