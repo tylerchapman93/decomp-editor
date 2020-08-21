@@ -1,0 +1,7 @@
+﻿{{ doNotModifyHeader }}
+
+const u8 gTrainerClassNames[][13] = {
+## for class in Classes
+    [TRAINER_CLASS_{{ class.Identifier }}] = _("{{ class.Name }}"),
+## endfor
+};

@@ -1,0 +1,19 @@
+﻿{{ doNotModifyHeader }}
+
+const struct MonCoords gTrainerFrontPicCoords[] = {
+## for pic in FrontPics
+    [TRAINER_PIC_{{ pic.Identifier }}] = {.size = {{ pic.CoordSize }}, .y_offset = {{ pic.CoordYOffset }}},
+## endfor
+};
+
+const struct CompressedSpriteSheet gTrainerFrontPicTable[] = {
+## for pic in FrontPics
+    TRAINER_SPRITE({{ pic.Identifier }}, gTrainerFrontPic_{{ CamelCase(pic.Identifier) }}, {{ pic.UncompressedSize }}),
+## endfor
+};
+
+const struct CompressedSpritePalette gTrainerFrontPicPaletteTable[] = {
+## for pic in FrontPics
+    TRAINER_PAL({{ pic.Identifier }}, gTrainerPalette_{{ CamelCase(pic.Identifier) }}),
+## endfor
+};

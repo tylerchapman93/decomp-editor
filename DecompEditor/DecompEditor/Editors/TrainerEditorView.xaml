@@ -42,7 +42,7 @@
                                   Width="154" Canvas.Left="195" Canvas.Top="90" Background="#FFE5E5E5" ToolTip="The encounter music when battling this trainer."/>
                         <xctk:CheckComboBox x:Name="aiScripts"
                              ItemsSource="{Binding ViewModel.TrainerAIScripts, ElementName=MainEditor}"
-                             SelectedItemsOverride="{Binding AiFlags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             SelectedItemsOverride="{Binding AIFlags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Canvas.Left="195" Canvas.Top="118" Width="154" Background="#FFE5E5E5" BorderBrush="#FFACACAC" ToolTip="The AI flags used when battling." />
                         <RadioButton IsChecked="{Binding IsMale}" Content="Male" Canvas.Left="166" Canvas.Top="151" Foreground="#FF323C9E" GroupName="Gender" ToolTip="If this trainer is Male."/>
                         <RadioButton IsChecked="{Binding IsFemale, Mode=OneWay}" Content="Female" Canvas.Left="223" Canvas.Top="151" Foreground="#FFC930C9" GroupName="Gender" ToolTip="If this trainer is Female"/>

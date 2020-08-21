@@ -70,6 +70,9 @@ namespace DecompEditor.Utils {
           }
         }
       };
+      foreach(object item in newValue)
+        if (item is INotifyPropertyChanged)
+          ((INotifyPropertyChanged)item).PropertyChanged += handler;
 
       return Set(ref field, newValue, propertyName);
     }

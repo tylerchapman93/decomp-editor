@@ -288,7 +288,7 @@ namespace DecompEditor.ProjectData.OldFormat {
         curLines = File.ReadAllLines(eventObjectConstantsPath).ToList();
         curLines.RemoveRange(0, curLines.FindIndex(str => str.Contains("NUM_OBJ_EVENT_GFX")) + 1);
 
-        // Generate the file for object_event_graphics_info_pointers.h.inc
+        // Generate the file for object_event_graphics_info_pointers.h
         using (StreamWriter stream = new StreamWriter(eventObjectConstantsPath + ".json.txt")) {
           stream.NewLine = "\n";
           stream.Write(FileUtils.readResource("event_objects.json.txt"));
@@ -340,7 +340,7 @@ namespace DecompEditor.ProjectData.OldFormat {
         curLines = File.ReadAllLines(eventObjectInfoGraphicsInfoPath).ToList();
         curLines.RemoveAll(str => !nonObjectGraphicsInfos.Any(info => str.Contains(info.CppVariable)));
 
-        // Generate the file for object_event_graphics_info_pointers.h.inc
+        // Generate the file for object_event_graphics_info_pointers.h
         using (StreamWriter stream = new StreamWriter(eventObjectInfoGraphicsInfoPath + ".json.txt")) {
           stream.NewLine = "\n";
           stream.WriteLine(FileUtils.readResource("object_event_graphics_info.json.txt"));
@@ -353,7 +353,7 @@ namespace DecompEditor.ProjectData.OldFormat {
         curLines = File.ReadAllLines(eventObjectInfoGraphicsPath).ToList();
         curLines.RemoveAll(str => str.StartsWith("const u32 gObjectEventPic_") || str.StartsWith("const u16 gObjectEventPalette"));
 
-        // Generate the file for object_event_graphics_info_pointers.h.inc
+        // Generate the file for object_event_graphics_info_pointers.h
         using (StreamWriter stream = new StreamWriter(eventObjectInfoGraphicsPath + ".json.txt")) {
           stream.NewLine = "\n";
           stream.WriteLine(FileUtils.readResource("object_event_graphics.json.txt"));
@@ -364,7 +364,7 @@ namespace DecompEditor.ProjectData.OldFormat {
         // Update the json_data_rules makefile.
         string jsonDataRulesPath = Path.Combine(projectDir, "json_data_rules.mk");
         using (StreamWriter stream = new StreamWriter(jsonDataRulesPath, /*append=*/true)) {
-          stream.Write(FileUtils.readResource("json_data_rules.txt"));
+          stream.Write(FileUtils.readResource("event_object_json_data_rules.txt"));
         }
       }
     }

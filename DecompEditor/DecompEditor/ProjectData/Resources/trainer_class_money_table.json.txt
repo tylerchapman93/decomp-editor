@@ -1,0 +1,6 @@
+﻿{{ doNotModifyHeader }}
+const struct TrainerMoney gTrainerMoneyTable[] = {
+## for class in Classes
+    {TRAINER_CLASS_{{ class.Identifier }}, {{ class.MoneyFactor }}},
+## endfor
+};

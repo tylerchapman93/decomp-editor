@@ -1,0 +1,19 @@
+﻿{{ doNotModifyHeader }}
+
+## for trainer in Trainers
+static const struct TrainerMon{% if existsIn(trainer.Party, "HasItems") %}Item{% else %}NoItem{% endif %}{% if existsIn(trainer.Party, "HasMoves") %}CustomMoves{% else %}DefaultMoves{% endif %} sParty_{{ CamelCase(trainer.Identifier) }}[] = {
+## for pokemon in trainer.Party.Pokemon
+    {
+    .iv = {{ pokemon.Iv }},
+    .lvl = {{ pokemon.Level }},
+    .species = {{ pokemon.Species }},
+## if existsIn(trainer.Party, "HasItems")
+    .heldItem = {{ pokemon.HeldItem }},
+## endif
+## if existsIn(trainer.Party, "HasMoves")
+    .moves = { {% for i in range(length(pokemon.Moves)) %}{{ at(pokemon.Moves, i) }}, {% endfor %} }
+## endif
+    },
+## endfor
+};
+## endfor

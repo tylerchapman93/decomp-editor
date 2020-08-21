@@ -1,5 +1,7 @@
 ﻿using DecompEditor.Utils;
+using System;
 using System.Diagnostics;
+using System.Windows;
 
 namespace DecompEditor {
   public abstract class DatabaseBase : ObservableObject {
@@ -27,9 +29,29 @@ namespace DecompEditor {
       IsLoading = true;
       reset();
 
-      Debug.Assert(!needsUpgrade(), "database needs to upgrade");
-      Project.Logger.Info("Loading {Database}", Name);
-      deserialize(deserializer);
+      // Check to see if this database needs to be upgraded.
+      if (needsUpgrade()) {
+        MessageBoxResult result = MessageBox.Show($"This project contains an unsupported format for the {Name}, " +
+                                                  "would you like to try and auto-upgrade?\n" +
+                                                  "Note: On failure this may leave the project in an inconsistent state.",
+                                                  "Upgrade Project", MessageBoxButton.YesNo);
+        if (result == MessageBoxResult.No)
+          throw new System.Exception($"'{Name}' has an unsupported format and the auto-upgrade was rejected.");
+
+        // Try to upgrade the project.
+        try {
+          Project.Logger.Info("Upgrading {Database}", Name);
+          upgrade(deserializer, new ProjectSerializer(deserializer.project));
+        } catch (Exception e) {
+          Project.Logger.Error(e, "Failed to upgrade {Database} to its expected format", Name);
+          throw e;
+        }
+
+      } else {
+        Project.Logger.Info("Loading {Database}", Name);
+        deserialize(deserializer);
+      }
+
       IsDirty = false;
       IsLoading = false;
     }
@@ -80,22 +102,8 @@ namespace DecompEditor {
     /// Upgrade the current format of the project to the new format. This
     /// is called on databases that returned true for `needsUpgrade`.
     /// </summary>
-    protected virtual void upgradeFormat(ProjectDeserializer deserializer, ProjectSerializer serializer) {
+    protected virtual void upgrade(ProjectDeserializer deserializer, ProjectSerializer serializer) {
       Debug.Fail("Databases must override 'upgrade' if 'needsUpgrade' returns true");
-    }
-
-    /// <summary>
-    /// Upgrade the current format of the project to the new format. This
-    /// is called on databases that returned true for `needsUpgrade`.
-    /// </summary>
-    public void upgrade(ProjectDeserializer deserializer, ProjectSerializer serializer) {
-      Debug.Assert(needsUpgrade(), "expected database to need upgrade");
-      Project.Logger.Info("Upgrading {Database}", Name);
-      IsLoading = true;
-      reset();
-      upgradeFormat(deserializer, serializer);
-      IsDirty = false;
-      IsLoading = false;
     }
   }
 }

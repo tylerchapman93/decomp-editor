@@ -1,0 +1,10 @@
+﻿{{ doNotModifyHeader }}
+## for pic in FrontPics
+const u32 gTrainerFrontPic_{{ CamelCase(pic.Identifier) }}[] = INCBIN_U32("graphics/trainers/front_pics/{{ pic.Path }}.4bpp.lz");
+const u32 gTrainerPalette_{{ CamelCase(pic.Identifier) }}[] = INCBIN_U32("graphics/trainers/palettes/{{ pic.PalettePath }}.gbapal.lz");
+
+## endfor
+
+//
+// This section of the file contains static data.
+//

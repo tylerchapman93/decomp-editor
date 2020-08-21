@@ -275,7 +275,7 @@ namespace DecompEditor {
     /// </summary>
     /// <param name="deserializer"></param>
     /// <param name="serializer"></param>
-    protected override void upgradeFormat(ProjectDeserializer deserializer, ProjectSerializer serializer) {
+    protected override void upgrade(ProjectDeserializer deserializer, ProjectSerializer serializer) {
       // Load the tracks and shadow sizes.
       Dictionary<string, EventObjectAnimTable> varToAnimTable = new Dictionary<string, EventObjectAnimTable>();
       Deserializer.loadAnimTables(deserializer, animTables, varToAnimTable);

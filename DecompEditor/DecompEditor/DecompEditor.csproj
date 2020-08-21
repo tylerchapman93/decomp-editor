@@ -13,11 +13,21 @@
     <None Remove="Editors\baseline_clear_black_18dp.png" />
     <None Remove="Editors\baseline_edit_black_18dp.png" />
     <None Remove="ProjectData\Resources\event_objects.json.txt" />
-    <None Remove="ProjectData\Resources\json_data_rules.txt" />
+    <None Remove="ProjectData\Resources\event_object_json_data_rules.txt" />
     <None Remove="ProjectData\Resources\object_event_graphics.json.txt" />
     <None Remove="ProjectData\Resources\object_event_graphics_info.json.txt" />
     <None Remove="ProjectData\Resources\object_event_graphics_info_pointers.json.txt" />
     <None Remove="ProjectData\Resources\object_event_pic_tables.json.txt" />
+    <None Remove="ProjectData\Resources\trainers.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_class_money_table.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_class_names.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_constants.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_front_pic_anims.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_front_pic_tables.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_graphics.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_graphics_pointers.json.txt" />
+    <None Remove="ProjectData\Resources\trainer_json_data_rules.txt" />
+    <None Remove="ProjectData\Resources\trainer_parties.json.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,12 +46,22 @@
     <Resource Include="Editors\baseline_add_black_18dp.png" />
     <Resource Include="Editors\baseline_clear_black_18dp.png" />
     <Resource Include="Editors\baseline_edit_black_18dp.png" />
-    <EmbeddedResource Include="ProjectData\Resources\json_data_rules.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainers.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\event_object_json_data_rules.txt" />
     <EmbeddedResource Include="ProjectData\Resources\event_objects.json.txt" />
     <EmbeddedResource Include="ProjectData\Resources\object_event_graphics.json.txt" />
     <EmbeddedResource Include="ProjectData\Resources\object_event_graphics_info.json.txt" />
     <EmbeddedResource Include="ProjectData\Resources\object_event_graphics_info_pointers.json.txt" />
     <EmbeddedResource Include="ProjectData\Resources\object_event_pic_tables.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_class_money_table.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_class_names.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_constants.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_front_pic_anims.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_front_pic_tables.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_graphics.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_graphics_pointers.json.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_json_data_rules.txt" />
+    <EmbeddedResource Include="ProjectData\Resources\trainer_parties.json.txt" />
   </ItemGroup>
 
   <ItemGroup>

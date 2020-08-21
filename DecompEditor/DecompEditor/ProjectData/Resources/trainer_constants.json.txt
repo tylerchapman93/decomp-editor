@@ -1,0 +1,12 @@
+﻿
+## for class in Classes
+#define TRAINER_CLASS_{{ class.Identifier }} {{ loop.index }}
+## endfor
+
+## for pic in FrontPics
+#define TRAINER_PIC_{{ pic.Identifier }} {{ loop.index }}
+## endfor
+
+//
+// This section of the file contains static data.
+//

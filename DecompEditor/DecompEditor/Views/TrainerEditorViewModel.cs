@@ -47,12 +47,12 @@ namespace DecompEditor.Views {
     /// <summary>
     /// The set of trainer classes within the project.
     /// </summary>
-    public IEnumerable<TrainerClass> TrainerClasses => Project.Instance.TrainerClasses.Classes;
+    public IEnumerable<TrainerClass> TrainerClasses => Project.Instance.Trainers.Classes;
 
     /// <summary>
     /// The set of trainer encounter music within the project.
     /// </summary>
-    public IEnumerable<TrainerPic> TrainerPics => Project.Instance.TrainerPics.FrontPics;
+    public IEnumerable<TrainerPic> TrainerPics => Project.Instance.Trainers.FrontPics;
 
     /// <summary>
     /// The currently selected trainer.

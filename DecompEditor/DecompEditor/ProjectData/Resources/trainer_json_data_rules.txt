@@ -1,0 +1,39 @@
+﻿
+include/constants/trainers.h: $(DATA_SRC_SUBDIR)/trainers.json include/constants/trainers.h.json.txt
+	$(JSONPROC) $^ $@
+
+include/trainer_graphics.h: $(DATA_SRC_SUBDIR)/trainers.json include/trainer_graphics.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/trainer_class_money_table.h: $(DATA_SRC_SUBDIR)/trainers.json $(DATA_SRC_SUBDIR)/trainer_class_money_table.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/trainer_parties.h: $(DATA_SRC_SUBDIR)/trainers.json $(DATA_SRC_SUBDIR)/trainer_parties.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/trainers.h: $(DATA_SRC_SUBDIR)/trainers.json $(DATA_SRC_SUBDIR)/trainers.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/graphics/trainers.h: $(DATA_SRC_SUBDIR)/trainers.json $(DATA_SRC_SUBDIR)/graphics/trainers.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/text/trainer_class_names.h: $(DATA_SRC_SUBDIR)/trainers.json $(DATA_SRC_SUBDIR)/text/trainer_class_names.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_anims.h: $(DATA_SRC_SUBDIR)/trainers.json $(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_anims.h.json.txt
+	$(JSONPROC) $^ $@
+
+$(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_tables.h: $(DATA_SRC_SUBDIR)/trainers.json $(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_tables.h.json.txt
+	$(JSONPROC) $^ $@
+
+AUTO_GEN_TARGETS += include/constants/trainers.h include/trainer_graphics.h $(DATA_SRC_SUBDIR)/trainer_class_money_table.h $(DATA_SRC_SUBDIR)/trainer_parties.h $(DATA_SRC_SUBDIR)/trainers.h $(DATA_SRC_SUBDIR)/graphics/trainers.h $(DATA_SRC_SUBDIR)/text/trainer_class_names.h $(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_anims.h $(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_tables.h
+
+$(C_BUILDDIR)/data.o: c_dep += include/constants/trainers.h
+$(C_BUILDDIR)/graphics.o: c_dep += include/trainer_graphics.h
+$(C_BUILDDIR)/battle_main.o: c_dep += $(DATA_SRC_SUBDIR)/trainer_class_money_table.h
+$(C_BUILDDIR)/data.o: c_dep += $(DATA_SRC_SUBDIR)/trainers.h
+$(C_BUILDDIR)/data.o: c_dep += $(DATA_SRC_SUBDIR)/trainer_parties.h
+$(C_BUILDDIR)/graphics.o: c_dep += $(DATA_SRC_SUBDIR)/graphics/trainers.h
+$(C_BUILDDIR)/data.o: c_dep += $(DATA_SRC_SUBDIR)/text/trainer_class_names.h
+$(C_BUILDDIR)/data.o: c_dep += $(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_anims.h
+$(C_BUILDDIR)/data.o: c_dep += $(DATA_SRC_SUBDIR)/trainer_graphics/front_pic_tables.h

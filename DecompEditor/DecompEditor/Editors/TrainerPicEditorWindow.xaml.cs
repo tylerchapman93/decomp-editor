@@ -33,7 +33,7 @@ namespace DecompEditor.Editors {
     private void addPicButton_Click(object sender, RoutedEventArgs e) {
       if (!FileUtils.uploadImage(out string path, TrainerPicDir))
         return;
-      string identifier = "__new_pic_" + Project.Instance.TrainerPics.FrontPics.Count;
+      string identifier = "__new_pic_" + Project.Instance.Trainers.FrontPics.Count;
       System.Drawing.Bitmap image = FileUtils.loadBitmap(path);
       var newPic = new TrainerPic() {
         Identifier = identifier,
@@ -42,7 +42,7 @@ namespace DecompEditor.Editors {
         FullPath = path,
         UncompressedSize = image.Width * image.Height
       };
-      Project.Instance.TrainerPics.addFrontPic(newPic);
+      Project.Instance.Trainers.addFrontPic(newPic);
       ViewModel.CurrentPic = newPic;
     }
   }

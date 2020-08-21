@@ -1,0 +1,30 @@
+﻿{{ doNotModifyHeader }}
+const struct Trainer gTrainers[] = {
+    [TRAINER_NONE] =
+    {
+        .partyFlags = 0,
+        .trainerClass = TRAINER_CLASS_PKMN_TRAINER_1,
+        .encounterMusic_gender = TRAINER_ENCOUNTER_MUSIC_MALE,
+        .trainerPic = TRAINER_PIC_HIKER,
+        .trainerName = _(""),
+        .items = {},
+        .doubleBattle = FALSE,
+        .aiFlags = 0,
+        .partySize = 0,
+        .party = {.NoItemDefaultMoves = NULL},
+    },
+## for trainer in Trainers
+    [TRAINER_{{ trainer.Identifier }}] = {
+        .partyFlags = {% if existsIn(trainer.Party, "HasItems") %}F_TRAINER_PARTY_HELD_ITEM{% if existsIn(trainer.Party, "HasMoves") %} | F_TRAINER_PARTY_CUSTOM_MOVESET{% endif %}{%else if existsIn(trainer.Party, "HasMoves")%}F_TRAINER_PARTY_CUSTOM_MOVESET{% else %}0{% endif %},
+        .trainerClass = TRAINER_CLASS_{{ trainer.Class }},
+        .encounterMusic_gender = {% if not existsIn(trainer, "IsMale") %}F_TRAINER_FEMALE | {% endif %}TRAINER_ENCOUNTER_MUSIC_{{ trainer.EncounterMusic }},
+        .trainerPic = TRAINER_PIC_{{ trainer.Pic }},
+        .trainerName = _("{{ trainer.Name }}"),
+        .items = { {% if existsIn(trainer, "HasItems") %}{% for i in range(length(trainer.Items)) %}{{ at(trainer.Items, i) }}, {% endfor %}{% endif %} },
+        .doubleBattle = {% if existsIn(trainer, "DoubleBattle") %}TRUE{% else %}FALSE{% endif %},
+        .aiFlags = {% for i in range(length(trainer.AIFlags)) %}AI_SCRIPT_{{ at(trainer.AIFlags, i) }} | {% endfor %}0,
+        .partySize = ARRAY_COUNT(sParty_{{ CamelCase(trainer.Identifier) }}),
+        .party = {.{% if existsIn(trainer.Party, "HasItems") %}{% if existsIn(trainer.Party, "HasMoves") %}ItemCustomMoves{% else %}ItemDefaultMoves{% endif %}{% else if existsIn(trainer.Party, "HasMoves") %}NoItemCustomMoves{% else %}NoItemDefaultMoves{% endif %} = sParty_{{ CamelCase(trainer.Identifier) }} },
+    },
+## endfor
+};

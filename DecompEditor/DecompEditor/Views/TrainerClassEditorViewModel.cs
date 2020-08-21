@@ -17,7 +17,7 @@ namespace DecompEditor.Views {
     }
     public bool ClassIsSelected => currentClass != null;
 
-    public bool CanAddClass => EditorViewModel.TrainerClasses.Count() != Project.Instance.TrainerClasses.MaxClassCount;
+    public bool CanAddClass => EditorViewModel.TrainerClasses.Count() != Project.Instance.Trainers.MaxClassCount;
 
     internal void addClass() {
       var newClass = new TrainerClass() {
@@ -25,7 +25,7 @@ namespace DecompEditor.Views {
         Name = "Class Name",
         MoneyFactor = 5
       };
-      Project.Instance.TrainerClasses.addClass(newClass);
+      Project.Instance.Trainers.addClass(newClass);
       EditorViewModel.RaisePropertyChanged("CanAddClass");
       CurrentClass = newClass;
     }

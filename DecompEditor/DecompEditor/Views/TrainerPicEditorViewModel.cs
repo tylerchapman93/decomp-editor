@@ -17,6 +17,6 @@ namespace DecompEditor.Views {
     /// <summary>
     /// The set of sprite pics within the project.
     /// </summary>
-    public ObservableCollection<TrainerPic> TrainerPics => Project.Instance.TrainerPics.FrontPics;
+    public ObservableCollection<TrainerPic> TrainerPics => Project.Instance.Trainers.FrontPics;
   }
 }

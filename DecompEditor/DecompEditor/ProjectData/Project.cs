@@ -16,9 +16,7 @@ namespace DecompEditor {
     internal ItemDatabase Items { get; } = new ItemDatabase();
     internal MoveDatabase Moves { get; } = new MoveDatabase();
     internal PokemonSpeciesDatabase Species { get; } = new PokemonSpeciesDatabase();
-    internal TrainerClassDatabase TrainerClasses { get; } = new TrainerClassDatabase();
     internal TrainerEncounterMusicDatabase TrainerEncounterMusic { get; } = new TrainerEncounterMusicDatabase();
-    internal TrainerPicDatabase TrainerPics { get; } = new TrainerPicDatabase();
     internal TrainerDatabase Trainers { get; } = new TrainerDatabase();
     internal string ProjectDir { get => projectDir; private set => projectDir = FileUtils.normalizePath(value); }
 
@@ -43,8 +41,7 @@ namespace DecompEditor {
 
     private Project() {
       registerDatabases(BattleAI, EventObjects, Items, Moves, Species,
-                        TrainerClasses, TrainerEncounterMusic, TrainerPics,
-                        Trainers);
+                        TrainerEncounterMusic, Trainers);
     }
     void registerDatabases(params DatabaseBase[] databases) => this.databases.AddRange(databases);
 
@@ -65,36 +62,6 @@ namespace DecompEditor {
 
       Logger.Info("Loading project located at: {ProjectDir}", projectDir);
 
-      // Check for any necessary upgrades.
-      IEnumerable<DatabaseBase> databasesToUpgrade = databases.Where(db => db.needsUpgrade());
-      if (databasesToUpgrade.Any()) {
-        MessageBoxResult result = MessageBox.Show("This project contains an unsupported format, would you like to try and auto-upgrade?\n" +
-                                                  "Note: On failure this may leave the project in an inconsistent state.",
-                                                  "Upgrade Project", MessageBoxButton.YesNo);
-        if (result == MessageBoxResult.No) {
-          ProjectDir = "";
-          Loaded?.Invoke();
-          IsLoading = false;
-          return;
-        }
-
-        var serializer = new ProjectSerializer(this);
-        foreach (DatabaseBase db in databasesToUpgrade) {
-          try {
-            db.upgrade(deserializer, serializer);
-          } catch (Exception e) {
-            MessageBox.Show($"Failed to upgrade project to new format, see {LogFileName} for more details.");
-            Logger.Error(e, "Failed to upgrade {Database} to its expected format", db.Name);
-
-            foreach (DatabaseBase database in databases)
-              database.clear();
-            Loaded?.Invoke();
-            IsLoading = false;
-            return;
-          }
-        }
-      }
-
       // Load the databases.
       foreach (var db in databases) {
         try {
@@ -108,6 +75,9 @@ namespace DecompEditor {
         }
       }
 
+      // Process any file replacements that arise during upgrades.
+      processFileReplacements();
+
       // Signal to all of the listeners that the project is loaded.
       Loaded?.Invoke();
       IsLoading = false;
@@ -118,15 +88,7 @@ namespace DecompEditor {
     /// </summary>
     public void save() {
       // Process any requested file replacements.
-      if (fileReplacements.Count != 0) {
-        string identifierRegex = "(^|[^0-9_a-zA-Z]){0}([^0-9_a-zA-Z]|$)", identifierRepl = "$1{0}$2";
-        FileUtils.replaceInFiles(
-          ProjectDir,
-          fileReplacements.Select(kv => new KeyValuePair<string, string>(string.Format(identifierRegex, kv.Key),
-                                                                         string.Format(identifierRepl, kv.Value))).ToList(),
-          "*.c|*.h|*.inc|*.json|*.mk");
-        fileReplacements.Clear();
-      }
+      processFileReplacements();
 
       var serializer = new ProjectSerializer(this);
       foreach (DatabaseBase database in databases)
@@ -149,6 +111,21 @@ namespace DecompEditor {
         }
       }
       fileReplacements[from] = to;
+    }
+
+    /// <summary>
+    /// Process any requested file replacements.
+    /// </summary>
+    void processFileReplacements() {
+      if (fileReplacements.Count != 0) {
+        string identifierRegex = "(^|[^0-9_a-zA-Z]){0}([^0-9_a-zA-Z]|$)", identifierRepl = "$1{0}$2";
+        FileUtils.replaceInFiles(
+          ProjectDir,
+          fileReplacements.Select(kv => new KeyValuePair<string, string>(string.Format(identifierRegex, kv.Key),
+                                                                         string.Format(identifierRepl, kv.Value))).ToList(),
+          "*.c|*.h|*.inc|*.json|*.mk");
+        fileReplacements.Clear();
+      }
     }
   }
 }

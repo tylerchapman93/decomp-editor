@@ -1,0 +1,6 @@
+﻿{{ doNotModifyHeader }}
+
+## for pic in FrontPics
+extern const u32 gTrainerFrontPic_{{ CamelCase(pic.Identifier) }}[];
+extern const u32 gTrainerPalette_{{ CamelCase(pic.Identifier) }}[];
+## endfor

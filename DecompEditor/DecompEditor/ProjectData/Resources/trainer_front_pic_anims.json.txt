@@ -1,0 +1,13 @@
+﻿{{ doNotModifyHeader }}
+
+## for pic in FrontPics
+static const union AnimCmd *const sAnims_{{ CamelCase(pic.Identifier) }}[] = {
+    sAnim_GeneralFrame0,
+};
+## endfor
+
+const union AnimCmd *const *const gTrainerFrontAnimsPtrTable[] = {
+## for pic in FrontPics
+    [TRAINER_PIC_{{ pic.Identifier }}] = sAnims_{{ CamelCase(pic.Identifier) }},
+## endfor
+};

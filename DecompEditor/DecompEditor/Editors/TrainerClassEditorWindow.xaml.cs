@@ -12,7 +12,7 @@ namespace DecompEditor.Editors {
     public TrainerClassEditorWindow(TrainerClass initialClass) {
       InitializeComponent();
       ViewModel.CurrentClass = initialClass;
-      className.MaxLength = Project.Instance.TrainerClasses.MaxClassNameLen;
+      className.MaxLength = Project.Instance.Trainers.MaxClassNameLen;
 
       classList.Items.SortDescriptions.Add(new SortDescription("Identifier", ListSortDirection.Ascending));
       classList.Items.IsLiveSorting = true;
