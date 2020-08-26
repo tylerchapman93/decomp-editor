@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DecompEditor" xmlns:editors="clr-namespace:DecompEditor.Editors"
         mc:Ignorable="d"
-        Title="Decomp Editor" Height="599" Width="826" Closing="window_Closing"
+        Title="Decomp Editor" Height="599" Width="861" Closing="window_Closing"
         DataContext="{Binding Main, Source={StaticResource ViewModelLocator}}">
     <Window.InputBindings>
         <KeyBinding Command="{Binding Path=OpenCommand}" Gesture="CTRL+O" />
@@ -29,6 +29,11 @@
             </MenuItem>
         </Menu>
         <TabControl Margin="0,27,0,0" Grid.ColumnSpan="4">
+            <TabItem Header="Adventure Editor">
+                <Grid Name="adventureEditorTab" Background="#FFE5E5E5">
+                    <editors:AdventureEditorView/>
+                </Grid>
+            </TabItem>
             <TabItem Header="Overworld Editor">
                 <Grid Name="overworldEditorTab" Background="#FFE5E5E5">
                     <editors:OverworldEditorView/>

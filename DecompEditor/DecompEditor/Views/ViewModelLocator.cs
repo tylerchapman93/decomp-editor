@@ -7,6 +7,7 @@ namespace DecompEditor.Views {
       ServiceLocator.SetLocatorProvider(() => SimpleIoc.Default);
 
       SimpleIoc.Default.Register<MainViewModel>();
+      SimpleIoc.Default.Register<AdventureEditorViewModel>();
       SimpleIoc.Default.Register<OverworldEditorViewModel>();
       SimpleIoc.Default.Register<OverworldPicEditorViewModel>();
       SimpleIoc.Default.Register<TrainerClassEditorViewModel>();
@@ -15,6 +16,7 @@ namespace DecompEditor.Views {
     }
 
     public static MainViewModel Main => SimpleIoc.Default.GetInstance<MainViewModel>();
+    public static AdventureEditorViewModel AdventureEditor => SimpleIoc.Default.GetInstance<AdventureEditorViewModel>();
     public static OverworldEditorViewModel OverworldEditor => SimpleIoc.Default.GetInstance<OverworldEditorViewModel>();
     public static OverworldPicEditorViewModel OverworldPicEditor => SimpleIoc.Default.GetInstance<OverworldPicEditorViewModel>();
     public static TrainerClassEditorViewModel TrainerClassEditor => SimpleIoc.Default.GetInstance<TrainerClassEditorViewModel>();

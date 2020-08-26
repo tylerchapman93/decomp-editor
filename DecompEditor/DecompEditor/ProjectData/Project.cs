@@ -1,4 +1,5 @@
-﻿using DecompEditor.Utils;
+﻿using DecompEditor.ProjectData;
+using DecompEditor.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace DecompEditor {
     readonly Dictionary<string, string> fileReplacements = new Dictionary<string, string>();
     readonly List<DatabaseBase> databases = new List<DatabaseBase>();
     private string projectDir;
+    internal AdventureDatabase Adventures { get; } = new AdventureDatabase();
     internal BattleAIDatabase BattleAI { get; } = new BattleAIDatabase();
     internal EventObjectDatabase EventObjects { get; } = new EventObjectDatabase();
     internal ItemDatabase Items { get; } = new ItemDatabase();
@@ -40,7 +42,7 @@ namespace DecompEditor {
     => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DecompEditor", "decompEditor.log");
 
     private Project() {
-      registerDatabases(BattleAI, EventObjects, Items, Moves, Species,
+      registerDatabases(Adventures, BattleAI, EventObjects, Items, Moves, Species,
                         TrainerEncounterMusic, Trainers);
     }
     void registerDatabases(params DatabaseBase[] databases) => this.databases.AddRange(databases);
@@ -123,7 +125,7 @@ namespace DecompEditor {
           ProjectDir,
           fileReplacements.Select(kv => new KeyValuePair<string, string>(string.Format(identifierRegex, kv.Key),
                                                                          string.Format(identifierRepl, kv.Value))).ToList(),
-          "*.c|*.h|*.inc|*.json|*.mk");
+          "*.c|*.h|*.inc|*.json|*.mk|*.pory");
         fileReplacements.Clear();
       }
     }
