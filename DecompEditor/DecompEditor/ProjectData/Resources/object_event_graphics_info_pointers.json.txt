@@ -10,12 +10,10 @@ const struct ObjectEventGraphicsInfo *const gObjectEventGraphicsInfoPointers[] =
 };
 
 ## for palette in Palettes
-#define OBJ_EVENT_PAL_TAG_{{ upperSnakeCase(palette.Identifier) }} 0x1100 + {{ palette.Tag }}
+#define OBJ_EVENT_PAL_TAG_{{ upperSnakeCase(palette.Identifier) }} 0x1100 + {{ loop.index }}
 ## endfor
 ## for pic in Pics
-{% if existsIn(pic, "PaletteTag") %}
-#define OBJ_EVENT_PAL_TAG_{{ upperSnakeCase(pic.Identifier) }} 0x1100 + {{ pic.PaletteTag }}
-{% endif %}
+#define OBJ_EVENT_PAL_TAG_{{ upperSnakeCase(pic.Identifier) }} 0x1100 + {{ add(length(Palettes), loop.index) }}
 ## endfor
 
 const struct SpritePalette sObjectEventSpritePalettes[] = {
@@ -23,9 +21,7 @@ const struct SpritePalette sObjectEventSpritePalettes[] = {
     {gObjectEventPalette{{ palette.Identifier }}, OBJ_EVENT_PAL_TAG_{{ upperSnakeCase(palette.Identifier) }}},
 ## endfor
 ## for pic in Pics
-{% if existsIn(pic, "PaletteTag") %}
     {gObjectEventPalette{{ pic.Identifier }}, OBJ_EVENT_PAL_TAG_{{ upperSnakeCase(pic.Identifier) }}},
-{% endif %}
 ## endfor
     {NULL,                 0x0000},
 };

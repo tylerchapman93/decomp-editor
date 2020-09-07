@@ -295,32 +295,15 @@ namespace DecompEditor {
     public class JSONDatabase {
       public JSONDatabase() { }
       public JSONDatabase(EventObjectDatabase database) {
-        int paletteTag = 0;
+        EventObjects = database.Objects.Select(evtObject => new JSONEventObject(evtObject)).ToArray();
         Palettes = database.varToPalette.Values.Select(palette => new JSONEventObjectPalette() {
           Identifier = palette.Identifier,
           Path = palette.FilePath,
-          Tag = paletteTag++
         }).ToArray();
-
-        Dictionary<EventObjectPic, JSONEventObjectPic> idenToPic = new Dictionary<EventObjectPic, JSONEventObjectPic>();
-        foreach (var pic in database.Pics) {
-          var jsonPic = new JSONEventObjectPic() {
-            Identifier = pic.Identifier,
-            Path = pic.Path
-          };
-          idenToPic.Add(pic, jsonPic);
-        }
-        Pics = idenToPic.Values.ToArray();
-
-        EventObjects = new JSONEventObject[database.Objects.Count];
-        for (int i = 0; i != EventObjects.Length; ++i) {
-          EventObject obj = database.Objects[i];
-          EventObjects[i] = new JSONEventObject(obj);
-
-          // If this object generates its palette, inform the first picture generate a palette.
-          if (obj.Palette == EventObjectPalette.GenerateFromFileInst)
-            idenToPic[obj.Frames[0].Pic].PaletteTag = paletteTag++;
-        }
+        Pics = database.Pics.Select(pic => new JSONEventObjectPic() {
+          Identifier = pic.Identifier,
+          Path = pic.Path
+        }).ToArray();
       }
 
       public void deserializeInto(EventObjectDatabase database, Dictionary<string, EventObjectAnimTable> varToAnimTable) {
@@ -347,13 +330,11 @@ namespace DecompEditor {
         public JSONEventObjectPic() { }
         public string Identifier { get; set; }
         public string Path { get; set; }
-        public int? PaletteTag { get; set; }
       }
       public class JSONEventObjectPalette {
         public JSONEventObjectPalette() { }
         public string Identifier { get; set; }
         public string Path { get; set; }
-        public int Tag { get; set; }
       }
       public class JSONEventObject {
         public class JSONFrame {
